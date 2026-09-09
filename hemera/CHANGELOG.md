@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3
+
+- **Correctif pairing** : l'API v1 (`/api/...`) est désormais servie sur le
+  port 443 (HTTPS) en plus du port 80, comme sur un vrai Hue Bridge.
+  Diagnostiqué à partir des logs réels : l'app Hue officielle (user-agent
+  `Dart/3.12`) sondait `/api/config` en HTTPS d'abord (404, car seule l'API
+  v2/CLIP y répondait), retombait sur HTTP (200), puis abandonnait sans
+  jamais tenter `POST /api` — elle n'obtenait donc jamais la fenêtre de
+  pairing sur le port qu'elle essayait en premier.
+
 ## 0.3.2
 
 - Ajout d'un log explicite pour chaque tentative de pairing (`POST /api`) :

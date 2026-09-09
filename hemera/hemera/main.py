@@ -114,6 +114,14 @@ async def async_main() -> None:
     hue_v2 = HueV2Api(cfg)
     hue_v2.set_entertainment_callbacks(_on_entertainment_start, _on_entertainment_stop)
     v2_app = web.Application()
+    # A real Hue Bridge serves both API generations on both ports — the Hue
+    # app has been observed (see log analysis) probing HTTPS first, getting a
+    # 404 against a v2-only server, then falling back to HTTP for /api/config
+    # and never attempting pairing at all. Mounting v1 here too, on the same
+    # `hue_v1` instance so link-button/user state stays shared, matches real
+    # bridge behaviour and lets pairing succeed regardless of which port the
+    # client tries.
+    hue_v1.register_routes(v2_app)
     hue_v2.register_routes(v2_app)
     v2_app.router.add_get("/eventstream/clip/v2", stream_v2_events)
     v2_runner = web.AppRunner(v2_app)
