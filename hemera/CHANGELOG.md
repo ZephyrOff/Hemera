@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.4
+
+- **Correctif probable du pairing qui reste bloqué avec un spinner actif** :
+  le certificat auto-signé n'avait pas d'extension Subject Alternative Name
+  (SAN). Les clients TLS modernes (iOS/Android, RFC 6125) ignorent le CN et
+  exigent un SAN correspondant ; sans lui, la poignée de main TLS peut
+  échouer silencieusement avant qu'aucune requête HTTP ne soit envoyée — ce
+  qui expliquerait un spinner actif côté app sans qu'aucune tentative
+  `POST /api` n'apparaisse dans nos logs. Le certificat existant est détecté
+  et régénéré automatiquement au démarrage si son SAN ne correspond pas à
+  l'IP courante — aucune action manuelle requise.
+
 ## 0.3.3
 
 - **Correctif pairing** : l'API v1 (`/api/...`) est désormais servie sur le

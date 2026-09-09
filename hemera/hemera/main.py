@@ -64,7 +64,7 @@ async def async_main() -> None:
         cfg.mark_dirty("config")
     mqtt_cfg = cfg.yaml_config["config"]["mqtt"]
 
-    cert_path = ensure_certificate(settings.config_dir, settings.mac)
+    cert_path = ensure_certificate(settings.config_dir, settings.mac, settings.host_ip)
 
     stop_event = asyncio.Event()
 
