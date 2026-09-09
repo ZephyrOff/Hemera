@@ -1,0 +1,40 @@
+Hemera — virtual Hue Bridge for Zigbee2MQTT (Home Assistant add-on)
+====================================================================
+
+This project incorporates source code adapted from the following third-party
+projects, per the terms of their respective licenses. Modified files carry a
+short header noting their origin; this NOTICE covers the project as a whole
+as required by the Apache License 2.0.
+
+1. diyHue (BridgeEmulator)
+   https://github.com/diyhue/diyHue
+   Copyright the diyHue contributors.
+   Licensed under the Apache License, Version 2.0.
+   A copy of the license is available at:
+   https://www.apache.org/licenses/LICENSE-2.0
+
+   Code adapted from BridgeEmulator/ into: hemera/hemera/objects/,
+   hemera/hemera/lights/, hemera/hemera/config/,
+   hemera/hemera/services/mqtt_client.py, hemera/hemera/api/ (v1 and v2
+   CLIP resource shapes).
+
+2. ha-hue-entertainment
+   https://github.com/83noit/ha-hue-entertainment
+   Copyright (c) 2026 Benoit.
+   Licensed under the MIT License.
+
+   Code adapted from custom_components/hue_entertainment/ into:
+   hemera/hemera/services/entertainment/ (DTLS-PSK server, HueStream frame
+   parsing, throttling engine, planned) and parts of
+   hemera/hemera/api/v1/ (Hue v1 REST API server shape, pairing flow).
+
+The Home Assistant add-on packaging (config.yaml, Dockerfile, rootfs s6
+services) follows the conventions used by diyhue/hassio-addon
+(https://github.com/diyhue/hassio-addon), independently written for this
+project.
+
+Neither diyHue, ha-hue-entertainment, hassio-addon, nor their authors are
+affiliated with, or endorse, this project. "Philips Hue" and "Hue
+Entertainment" are trademarks of Signify Holding; this project is an
+independent, unofficial, community re-implementation for personal/
+interoperability use.

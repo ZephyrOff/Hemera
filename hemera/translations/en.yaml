@@ -1,0 +1,34 @@
+configuration:
+  mac:
+    name: Network MAC address
+    description: >-
+      The real MAC address of the network interface your Home Assistant
+      host actually uses to reach your LAN (format XX:XX:XX:XX:XX:XX). Leave
+      empty to auto-detect, but this can pick the wrong interface under
+      host networking (e.g. a Docker bridge instead of your real NIC) and
+      silently break pairing with the official Hue app — set this
+      explicitly if pairing gets stuck on "press the button".
+  mqtt_host:
+    name: MQTT host
+    description: >-
+      Leave empty to auto-discover the Mosquitto broker add-on. Set this
+      only if your MQTT broker is not the Mosquitto add-on.
+  mqtt_port:
+    name: MQTT port
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_user:
+    name: MQTT username
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_password:
+    name: MQTT password
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_base_topic:
+    name: Zigbee2MQTT base topic
+    description: The base_topic configured in Zigbee2MQTT (default "zigbee2mqtt").
+  entertainment_fps:
+    name: Entertainment update rate (Hz)
+    description: >-
+      How often Hue Entertainment (Sync Box) colour updates are sent to
+      Zigbee2MQTT. Lower it if your Zigbee mesh struggles under load.
+  log_level:
+    name: Log level
