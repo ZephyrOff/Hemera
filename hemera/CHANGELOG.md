@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.5
+
+- **Alignement TLS complet sur diyHue** (dont le pairing avec l'app Hue est
+  éprouvé) : suite de chiffrement restreinte à
+  `ECDHE-ECDSA-AES128-GCM-SHA256`, courbe `prime256v1`, préférence serveur,
+  et TLS plafonné à 1.2 — reproduisant exactement `HueEmulator3.py`. Le
+  certificat gagne aussi les extensions `basicConstraints`/`keyUsage`/
+  `extendedKeyUsage=serverAuth` de `genCert.sh`/`openssl.conf`, absentes de
+  notre génération initiale. Une suite de chiffrement Python par défaut
+  (beaucoup plus large que ce que le client TLS embarqué de l'app Hue
+  accepte probablement) ou un certificat sans extensions de type "serveur"
+  peuvent faire échouer la poignée de main TLS silencieusement, avant tout
+  échange HTTP — indiscernable, de notre côté, d'un client qui n'a jamais
+  essayé. Le certificat existant est à nouveau détecté comme obsolète et
+  régénéré automatiquement au démarrage.
+
 ## 0.3.4
 
 - **Correctif probable du pairing qui reste bloqué avec un spinner actif** :
