@@ -90,6 +90,32 @@ class MqttClient:
         self._stop = asyncio.Event()
         self._task: asyncio.Task | None = None
         self._client: aiomqtt.Client | None = None
+        self._last_devices_payload: list[dict] | None = None
+
+    @property
+    def connected(self) -> bool:
+        return self._client is not None
+
+    async def reconfigure(self, host: str, port: int, user: str, password: str, base_topic: str) -> None:
+        """Apply new connection settings from the admin panel and reconnect.
+        Safe to call while running — stops the current connection (if any)
+        and starts a fresh one with the new parameters."""
+        await self.stop()
+        self.host = host
+        self.port = port
+        self.user = user or None
+        self.password = password or None
+        self.base_topic = base_topic
+        self._stop = asyncio.Event()
+        self.start()
+
+    def resync_devices(self) -> None:
+        """Re-run device sync against the last `bridge/devices` payload seen —
+        used after un-excluding a device so it reappears immediately instead
+        of waiting for Z2M to publish its (retained, rarely-repeated) device
+        list again."""
+        if self._last_devices_payload is not None:
+            self._sync_devices(self._last_devices_payload)
 
     async def publish(self, topic: str, payload: str) -> None:
         """Publish on the persistent connection (used by the Entertainment engine
@@ -157,12 +183,16 @@ class MqttClient:
         return None
 
     def _sync_devices(self, devices: list[dict]) -> None:
+        self._last_devices_payload = devices
+        excluded = self.cfg.yaml_config["config"].get("excluded_devices", {})
         for device in devices:
             if device.get("type") != "Router" and device.get("type") != "EndDevice":
                 continue
             ieee = device.get("ieee_address")
             friendly_name = device.get("friendly_name")
             if not ieee or not friendly_name:
+                continue
+            if ieee in excluded:
                 continue
             existing = self._find_light_by_ieee(ieee)
             if existing is not None:

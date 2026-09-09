@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.2.1"
+version: "0.3.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -17,14 +17,17 @@ init: false
 # reason. Our own HTTP(S)/DTLS ports are bound directly on the host as
 # configured below; the "ports" section is informational under host_network.
 host_network: true
+webui: "http://[HOST]:8099/"
 ports:
   80/tcp: 80
   443/tcp: 443
   2100/udp: 2100
+  8099/tcp: 8099
 ports_description:
   80/tcp: "Hue API v1 (HTTP)"
   443/tcp: "Hue API v2 / CLIP (HTTPS)"
   2100/udp: "Hue Entertainment (DTLS/HueStream) — Hue Sync Box streaming"
+  8099/tcp: "Admin panel (MQTT config, rooms, link button)"
 # Lets bashio::services pull the Mosquitto add-on's connection details
 # automatically when mqtt_host is left empty in options (see rootfs run script).
 services:

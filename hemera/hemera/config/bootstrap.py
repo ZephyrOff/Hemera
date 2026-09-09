@@ -42,6 +42,7 @@ class Settings:
     https_port: int
     entertainment_port: int
     entertainment_fps: int
+    admin_port: int
     mac: str
     bridge_id: str
     mqtt_host: str
@@ -91,6 +92,7 @@ def load_settings() -> Settings:
         https_port=_env_int("HEMERA_HTTPS_PORT", 443),
         entertainment_port=_env_int("HEMERA_ENTERTAINMENT_PORT", 2100),
         entertainment_fps=_env_int("HEMERA_ENTERTAINMENT_FPS", 15),
+        admin_port=_env_int("HEMERA_ADMIN_PORT", 8099),
         mac=mac,
         bridge_id=_env("HEMERA_BRIDGE_ID") or make_bridge_id(mac),
         mqtt_host=_env("HEMERA_MQTT_HOST", "127.0.0.1"),

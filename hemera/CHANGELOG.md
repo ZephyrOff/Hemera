@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+- **Panel d'administration** (port 8099, lien "Web UI" de l'add-on) :
+  - Configuration de la connexion MQTT (hôte/port/utilisateur/mot de passe/
+    base topic), appliquée à chaud sans redémarrer l'add-on.
+  - Création de pièces (rooms) avec sélection directe des lumières à y
+    inclure, ajout/retrait de lumières sur les pièces existantes.
+  - Exclusion d'appareils détectés (retirés du pont ; réinclusion possible,
+    ré-applique immédiatement la dernière liste d'appareils connue de Z2M).
+  - Simulation de l'appui du bouton de couplage.
+  - Vue d'ensemble : lumières découvertes, pièces, zones Entertainment.
+- La configuration MQTT persistée (fichier `config.yaml` interne) est
+  désormais la source de vérité après le premier démarrage — les options de
+  l'add-on ne servent qu'à l'amorcer une fois, le panel prend le relais.
+
 ## 0.2.1
 
 - Fenêtre de pairing portée de 30 à 60 secondes.

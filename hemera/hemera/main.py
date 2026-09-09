@@ -7,12 +7,14 @@ need to discover, pair with, control, and stream to Zigbee2MQTT lights.
 from __future__ import annotations
 
 import asyncio
+import os
 import ssl
 import signal
 import sys
 
 from aiohttp import web
 
+from hemera.api.admin.routes import AdminApi
 from hemera.api.v1.routes import HueV1Api
 from hemera.api.v2.eventstream import stream_v2_events, trim_eventstream_forever
 from hemera.api.v2.routes import HueV2Api
@@ -48,19 +50,26 @@ async def async_main() -> None:
     )
 
     cfg = Config(settings.config_dir)
+    is_first_run = not os.path.exists(cfg._config_path("config"))
     cfg.load_config(default_config(settings.bridge_id, settings.mac, settings.host_ip))
-    cfg.yaml_config["config"]["mqtt"] = {
-        "host": settings.mqtt_host, "port": settings.mqtt_port,
-        "user": settings.mqtt_user, "password": settings.mqtt_password,
-        "base_topic": settings.mqtt_base_topic,
-    }
+    if is_first_run:
+        # Seed from the add-on options / env vars on first boot only. Once
+        # persisted, the admin panel is the source of truth for MQTT settings —
+        # otherwise every restart would silently discard a change made there.
+        cfg.yaml_config["config"]["mqtt"] = {
+            "host": settings.mqtt_host, "port": settings.mqtt_port,
+            "user": settings.mqtt_user, "password": settings.mqtt_password,
+            "base_topic": settings.mqtt_base_topic,
+        }
+        cfg.mark_dirty("config")
+    mqtt_cfg = cfg.yaml_config["config"]["mqtt"]
 
     cert_path = ensure_certificate(settings.config_dir, settings.mac)
 
     stop_event = asyncio.Event()
 
     mqtt_client = MqttClient(
-        cfg, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_password, settings.mqtt_base_topic
+        cfg, mqtt_cfg["host"], mqtt_cfg["port"], mqtt_cfg["user"], mqtt_cfg["password"], mqtt_cfg["base_topic"]
     )
     mqtt_client.start()
 
@@ -92,6 +101,15 @@ async def async_main() -> None:
     v1_site = web.TCPSite(v1_runner, settings.bind_ip, settings.http_port)
     await v1_site.start()
     logging.info("Hue v1 API listening on %s:%d", settings.bind_ip, settings.http_port)
+
+    admin_api = AdminApi(cfg, mqtt_client, hue_v1)
+    admin_app = web.Application()
+    admin_api.register_routes(admin_app)
+    admin_runner = web.AppRunner(admin_app)
+    await admin_runner.setup()
+    admin_site = web.TCPSite(admin_runner, settings.bind_ip, settings.admin_port)
+    await admin_site.start()
+    logging.info("Admin panel listening on %s:%d", settings.bind_ip, settings.admin_port)
 
     hue_v2 = HueV2Api(cfg)
     hue_v2.set_entertainment_callbacks(_on_entertainment_start, _on_entertainment_stop)
@@ -159,6 +177,7 @@ async def async_main() -> None:
         await mdns.stop()
         await v1_runner.cleanup()
         await v2_runner.cleanup()
+        await admin_runner.cleanup()
         cfg.save_config()
 
 

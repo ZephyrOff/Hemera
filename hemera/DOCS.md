@@ -42,21 +42,25 @@ Cet add-on utilise `host_network: true` (réseau de l'hôte) — requis pour que
 la découverte mDNS/SSDP fonctionne et que l'application Hue / la Sync Box
 trouvent le pont sur le réseau local. Ce n'est pas configurable.
 
-## Pairing avec l'application Hue
+## Panel d'administration
 
-Le bouton de couplage est armé automatiquement pendant 60 secondes au
-démarrage de l'add-on. Si l'application reste bloquée sur "Appuyez sur le
-bouton en haut du Hue Bridge" (fenêtre expirée avant que vous n'arriviez à
-cet écran), pas besoin de redémarrer l'add-on : réarmez le bouton avec
+Accessible via le bouton "Web UI" de l'add-on, ou directement sur
+`http://<IP de votre serveur HA>:8099/`. Volontairement non authentifié —
+comme le bouton physique d'un vrai bridge, l'accès au réseau local est
+considéré comme suffisant.
 
-```bash
-curl -X POST http://<IP de votre serveur HA>/linkbutton
-```
-
-puis relancez immédiatement le pairing dans l'application (nouvelle fenêtre
-de 60 secondes). Cette route n'est volontairement pas authentifiée — comme
-le bouton physique d'un vrai bridge, l'accès au réseau local est considéré
-comme suffisant.
+- **Bouton de couplage** : le simuler depuis le panel arme une fenêtre de
+  pairing de 60 secondes — lancez le pairing dans l'application Hue juste
+  après. Plus besoin de redémarrer l'add-on si la fenêtre expire avant que
+  vous n'arriviez à cet écran dans l'app.
+- **MQTT** : modifier et reconnecter la connexion au broker sans redémarrer.
+  Une fois enregistrée depuis le panel, cette configuration prend le pas sur
+  les options de l'add-on au démarrage suivant.
+- **Lumières** : liste des appareils Zigbee2MQTT détectés, avec la
+  possibilité de les exclure du pont (ils redeviennent inclus, avec
+  réapparition immédiate, via le bouton "Réinclure").
+- **Pièces (rooms)** : création avec sélection directe des lumières à y
+  inclure, ajout/retrait ensuite depuis la liste des pièces existantes.
 
 ## Persistance
 

@@ -33,9 +33,12 @@ hemera/                   <- l'add-on (contexte de build du Supervisor)
 3. Configurer les options (voir `hemera/DOCS.md`) et démarrer.
 
 Pas de configuration MQTT à saisir si Mosquitto tourne déjà comme add-on :
-Hemera le détecte automatiquement via l'API Supervisor.
+Hemera le détecte automatiquement via l'API Supervisor. Un panel
+d'administration est accessible via le bouton "Web UI" de l'add-on (port
+8099) pour reconfigurer MQTT à chaud, gérer les pièces, exclure des
+appareils et simuler le bouton de couplage — voir `hemera/DOCS.md`.
 
-## État actuel (étapes 1 à 4 du plan)
+## État actuel (étapes 1 à 4 du plan + panel d'administration)
 
 Implémenté et testé (voir la section Tests) :
 
@@ -61,6 +64,12 @@ Implémenté et testé (voir la section Tests) :
   Entertainment via les deux API (v1 et v2). Si le runtime OpenSSL 3.x est
   absent, le reste du pont continue de fonctionner — seul le streaming est
   indisponible.
+
+- **Panel d'administration** (port 8099) : configuration MQTT à chaud
+  (persistée, prioritaire sur les options de l'add-on après le premier
+  démarrage), création de pièces avec sélection des lumières, ajout/retrait
+  de lumières sur les pièces existantes, exclusion/réinclusion d'appareils
+  détectés, simulation du bouton de couplage.
 
 Pas encore implémenté (voir le plan) : capteurs/interrupteurs Zigbee
 (motion, boutons).
@@ -94,10 +103,12 @@ Variables d'environnement principales (voir `hemera/hemera/config/bootstrap.py`)
 | `HEMERA_MQTT_BASE_TOPIC` | `zigbee2mqtt` | Préfixe des topics Z2M |
 | `HEMERA_ENTERTAINMENT_PORT` | `2100` | Port UDP du serveur DTLS Hue Entertainment |
 | `HEMERA_ENTERTAINMENT_FPS` | `15` | Débit de mise à jour pendant une session Entertainment |
+| `HEMERA_ADMIN_PORT` | `8099` | Port du panel d'administration |
 | `HEMERA_BRIDGE_ID` / `HEMERA_MAC` | dérivés de la machine | Identité du pont |
 
-Pairing : le bouton de couplage est armé automatiquement pendant 30 s au
-démarrage. Passé ce délai, réarmez-le avec `PUT /api/{username}/config
+Pairing : le bouton de couplage est armé automatiquement pendant 60 s au
+démarrage. Passé ce délai, réarmez-le depuis le panel d'administration
+(`http://<host>:8099/`), via `PUT /api/{username}/config
 {"linkbutton": true}`, ou sous Linux : `kill -USR1 <pid>`.
 
 ## Tests manuels effectués
@@ -119,6 +130,12 @@ directement dans le moteur — la partie DTLS/OpenSSL elle-même n'a pas pu
 machine de développement Windows ; le code est repris quasiment tel quel
 d'une implémentation dont les tests utilisent de vrais sockets UDP et un
 vrai client `openssl s_client`).
+
+Le panel d'administration a été testé de bout en bout : découverte de
+lumières, création de pièce, ajout/retrait de lumière sur une pièce,
+exclusion puis réinclusion d'un appareil (réapparition immédiate confirmée),
+reconfiguration MQTT à chaud vers un autre broker puis retour, et
+persistance de tout cet état après redémarrage.
 
 Plusieurs bugs réels ont été trouvés et corrigés pendant ces tests (état de
 scène jamais capturé à la création ; id manquant dans

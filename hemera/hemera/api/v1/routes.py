@@ -73,6 +73,10 @@ class HueV1Api:
     def link_button_active(self) -> bool:
         return time.monotonic() < self._link_button_expires
 
+    @property
+    def link_button_remaining_seconds(self) -> float:
+        return max(0.0, self._link_button_expires - time.monotonic())
+
     def arm_link_button(self) -> None:
         self._link_button_expires = time.monotonic() + LINK_BUTTON_TIMEOUT
         logging.info("Link button armed for %.0fs — pair a client now", LINK_BUTTON_TIMEOUT)

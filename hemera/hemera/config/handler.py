@@ -317,6 +317,7 @@ def default_config(bridge_id: str, mac: str, host_ip: str) -> dict:
         "mqtt": {"host": "127.0.0.1", "port": 1883, "user": "", "password": "", "base_topic": "zigbee2mqtt"},
         "portalservices": False,
         "zigbeechannel": 25,
+        "excluded_devices": {},  # ieee_address -> last known friendly_name, set via the admin panel
     }
 
 
