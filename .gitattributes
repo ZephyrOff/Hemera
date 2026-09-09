@@ -1,5 +1,0 @@
-# Shell scripts run inside the Linux add-on container — a CRLF line ending
-# (easy to pick up on a Windows dev machine via git's autocrlf) breaks the
-# shebang line and the script silently fails to start.
-hemera/rootfs/** text eol=lf
-*.sh text eol=lf
