@@ -89,6 +89,22 @@ class MqttClient:
         self.base_topic = base_topic
         self._stop = asyncio.Event()
         self._task: asyncio.Task | None = None
+        self._client: aiomqtt.Client | None = None
+
+    async def publish(self, topic: str, payload: str) -> None:
+        """Publish on the persistent connection (used by the Entertainment engine
+        for high-frequency streaming — never opens a new connection per call,
+        unlike bridge.lights.protocols.mqtt's one-shot publish for REST commands).
+        Silently drops the message if not currently connected — for a live
+        Entertainment stream, a dropped frame during a broker hiccup is
+        preferable to blocking or buffering stale colour data.
+        """
+        if self._client is None:
+            return
+        try:
+            await self._client.publish(topic, payload)
+        except aiomqtt.MqttError:
+            pass
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run_forever(), name="mqtt-client")
@@ -107,6 +123,7 @@ class MqttClient:
                     hostname=self.host, port=self.port, username=self.user, password=self.password
                 ) as client:
                     logging.info("Connected to MQTT broker %s:%d", self.host, self.port)
+                    self._client = client
                     await client.subscribe(f"{self.base_topic}/bridge/devices")
                     await client.subscribe(f"{self.base_topic}/+")
                     async for message in client.messages:
@@ -116,6 +133,8 @@ class MqttClient:
                     break
                 logging.warning("MQTT connection lost (%s); reconnecting in %.0fs", exc, _RECONNECT_INTERVAL_S)
                 await asyncio.sleep(_RECONNECT_INTERVAL_S)
+            finally:
+                self._client = None
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
         try:

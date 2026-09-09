@@ -16,5 +16,10 @@ configuration:
   mqtt_base_topic:
     name: Zigbee2MQTT base topic
     description: The base_topic configured in Zigbee2MQTT (default "zigbee2mqtt").
+  entertainment_fps:
+    name: Entertainment update rate (Hz)
+    description: >-
+      How often Hue Entertainment (Sync Box) colour updates are sent to
+      Zigbee2MQTT. Lower it if your Zigbee mesh struggles under load.
   log_level:
     name: Log level

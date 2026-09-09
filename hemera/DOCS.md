@@ -20,7 +20,21 @@ d'avancement.
 | `mqtt_host` | Laisser vide pour utiliser automatiquement l'add-on Mosquitto broker installé. Ne renseigner que si vous utilisez un autre broker MQTT. |
 | `mqtt_port`, `mqtt_user`, `mqtt_password` | Ignorés si `mqtt_host` est vide (auto-détection). |
 | `mqtt_base_topic` | Le `base_topic` configuré dans Zigbee2MQTT (`zigbee2mqtt` par défaut). |
+| `entertainment_fps` | Débit de mise à jour des couleurs pendant une session Hue Entertainment (Sync Box), 1 à 30 Hz. À baisser si le réseau Zigbee sature. |
 | `log_level` | Niveau de log. |
+
+## Hue Entertainment (Sync Box)
+
+Le port UDP 2100 (DTLS) reçoit le flux Hue Entertainment. Une session
+démarre quand un client (Hue Sync Box, ou l'app Hue en mode "Sync des
+lumières à l'écran") active une zone Entertainment via l'API v1 ou v2 — les
+couleurs sont ensuite relayées vers Zigbee2MQTT en respectant
+`entertainment_fps`, avec suppression des mises à jour trop proches de la
+précédente pour ne pas saturer le maillage Zigbee.
+
+Si le runtime OpenSSL 3.x n'est pas disponible dans le conteneur, un message
+d'erreur apparaît au démarrage mais le reste du pont continue de
+fonctionner normalement — seul le streaming Entertainment est indisponible.
 
 ## Réseau
 

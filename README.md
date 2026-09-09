@@ -35,7 +35,7 @@ hemera/                   <- l'add-on (contexte de build du Supervisor)
 Pas de configuration MQTT à saisir si Mosquitto tourne déjà comme add-on :
 Hemera le détecte automatiquement via l'API Supervisor.
 
-## État actuel (étapes 1 et 2 du plan)
+## État actuel (étapes 1 à 4 du plan)
 
 Implémenté et testé (voir la section Tests) :
 
@@ -51,11 +51,19 @@ Implémenté et testé (voir la section Tests) :
   et synchronisation d'état en direct.
 - Publication des commandes vers Z2M (`<base_topic>/<friendly_name>/set`).
 - Persistance YAML (un fichier par ressource) avec sauvegarde différée.
-- Annonce mDNS (`_hue._tcp.local`).
+- Annonce mDNS (`_hue._tcp.local`) et découverte SSDP/UPnP (M-SEARCH + NOTIFY).
 - Certificat auto-signé généré au premier démarrage, servi par l'API v2.
+- **Hue Entertainment** : serveur DTLS-PSK (port 2100/udp), parsing
+  HueStream v1/v2, moteur de streaming (dédup par tolérance CIE/luminosité +
+  limitation de débit à intervalle fixe configurable — voir
+  `entertainment_fps`), agrégation des segments pour les bandeaux Gradient
+  (publication `gradient` Z2M). Câblé sur le démarrage/arrêt d'une zone
+  Entertainment via les deux API (v1 et v2). Si le runtime OpenSSL 3.x est
+  absent, le reste du pont continue de fonctionner — seul le streaming est
+  indisponible.
 
-Pas encore implémenté (voir le plan) : SSDP, Hue Entertainment
-(DTLS/HueStream — la Sync Box elle-même), capteurs/interrupteurs Zigbee.
+Pas encore implémenté (voir le plan) : capteurs/interrupteurs Zigbee
+(motion, boutons).
 
 ## Développement local (hors add-on)
 
@@ -84,6 +92,8 @@ Variables d'environnement principales (voir `hemera/hemera/config/bootstrap.py`)
 | `HEMERA_HTTP_PORT` / `HEMERA_HTTPS_PORT` | `80` / `443` | Ports des API Hue v1 / v2 |
 | `HEMERA_MQTT_HOST` / `_PORT` / `_USER` / `_PASSWORD` | `127.0.0.1` / `1883` | Broker MQTT (auto-détecté dans l'add-on) |
 | `HEMERA_MQTT_BASE_TOPIC` | `zigbee2mqtt` | Préfixe des topics Z2M |
+| `HEMERA_ENTERTAINMENT_PORT` | `2100` | Port UDP du serveur DTLS Hue Entertainment |
+| `HEMERA_ENTERTAINMENT_FPS` | `15` | Débit de mise à jour pendant une session Entertainment |
 | `HEMERA_BRIDGE_ID` / `HEMERA_MAC` | dérivés de la machine | Identité du pont |
 
 Pairing : le bouton de couplage est armé automatiquement pendant 30 s au
@@ -92,17 +102,30 @@ démarrage. Passé ce délai, réarmez-le avec `PUT /api/{username}/config
 
 ## Tests manuels effectués
 
-Le cœur (modèle d'objets, persistance, auto-découverte MQTT, API v1 et v2) a
-été validé de bout en bout avec un broker MQTT local et des requêtes HTTP
-directes : pairing, création de lumière depuis une annonce Z2M simulée,
-synchronisation d'état Z2M → API (v1 et v2), commande API → publication MQTT,
-création de groupe/scène/zone Entertainment, rappel de scène, démarrage/arrêt
-d'une zone Entertainment via v2 (`action: start`/`stop`), eventstream SSE, et
-rechargement depuis le disque après redémarrage. Deux bugs réels ont été
-trouvés et corrigés pendant ces tests (état de scène jamais capturé à la
-création ; id manquant dans `Light.get_v2_entertainment`).
+Le cœur (modèle d'objets, persistance, auto-découverte MQTT, API v1 et v2,
+SSDP) a été validé de bout en bout avec un broker MQTT local et des requêtes
+HTTP/UDP directes : pairing, création de lumière depuis une annonce Z2M
+simulée, synchronisation d'état Z2M → API (v1 et v2), commande API →
+publication MQTT, création de groupe/scène/zone Entertainment, rappel de
+scène, démarrage/arrêt d'une zone Entertainment via v2 (`action:
+start`/`stop`), eventstream SSE, réponse SSDP à un vrai M-SEARCH multicast
+sur le réseau local, et rechargement depuis le disque après redémarrage.
 
-Non testé : un vrai client Hue (application officielle ou Sync Box), et le
-build/déploiement réel de l'add-on via le Supervisor Home Assistant — à
-faire dès que possible sur votre serveur, conformément à la Milestone 1 du
+Le moteur Entertainment (parsing HueStream v2, correspondance channel →
+lumière/segment, dédup par tolérance, agrégation Gradient, limitation de
+débit) a été testé avec des trames HueStream synthétiques injectées
+directement dans le moteur — la partie DTLS/OpenSSL elle-même n'a pas pu
+être testée localement (nécessite un runtime OpenSSL 3.x absent de la
+machine de développement Windows ; le code est repris quasiment tel quel
+d'une implémentation dont les tests utilisent de vrais sockets UDP et un
+vrai client `openssl s_client`).
+
+Plusieurs bugs réels ont été trouvés et corrigés pendant ces tests (état de
+scène jamais capturé à la création ; id manquant dans
+`Light.get_v2_entertainment` ; crash au démarrage sur un hôte sans OpenSSL
+détectable, désormais non-bloquant).
+
+L'add-on s'installe et démarre sur un vrai serveur Home Assistant (confirmé).
+Non testé : un vrai client Hue Entertainment (Sync Box ou application
+officielle) — à faire dès que possible, conformément à la Milestone 1 du
 document de cadrage.

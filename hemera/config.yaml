@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.1.0"
+version: "0.2.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -24,7 +24,7 @@ ports:
 ports_description:
   80/tcp: "Hue API v1 (HTTP)"
   443/tcp: "Hue API v2 / CLIP (HTTPS)"
-  2100/udp: "Hue Entertainment (DTLS/HueStream) — not wired up yet"
+  2100/udp: "Hue Entertainment (DTLS/HueStream) — Hue Sync Box streaming"
 # Lets bashio::services pull the Mosquitto add-on's connection details
 # automatically when mqtt_host is left empty in options (see rootfs run script).
 services:
@@ -35,6 +35,7 @@ options:
   mqtt_user: ""
   mqtt_password: ""
   mqtt_base_topic: "zigbee2mqtt"
+  entertainment_fps: 15
   log_level: "info"
 schema:
   mqtt_host: "str?"
@@ -42,6 +43,7 @@ schema:
   mqtt_user: "str?"
   mqtt_password: "password?"
   mqtt_base_topic: "str"
+  entertainment_fps: "int(1,30)"
   log_level: "list(debug|info|warning|error)"
 # No `map` entries needed: persisted state (paired users, lights/groups/
 # scenes, TLS cert) lives in /data, which every add-on gets automatically —

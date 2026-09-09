@@ -1,9 +1,7 @@
-"""Entrypoint: load config, start the v1 + v2 HTTP(S) APIs, mDNS
-advertisement, and the Zigbee2MQTT client.
-
-SSDP and Hue Entertainment (DTLS/HueStream) are added in later steps of the
-project plan — this wires up enough for the Hue app to discover, pair with,
-and control Zigbee2MQTT lights through both the v1 and v2 (CLIP) APIs.
+"""Entrypoint: load config, start the v1 + v2 HTTP(S) APIs, mDNS/SSDP
+advertisement, the Zigbee2MQTT client, and the Hue Entertainment
+(DTLS/HueStream) engine — the full set the Hue app and the Hue Sync Box
+need to discover, pair with, control, and stream to Zigbee2MQTT lights.
 """
 
 from __future__ import annotations
@@ -21,8 +19,11 @@ from hemera.api.v2.routes import HueV2Api
 from hemera.config.bootstrap import ensure_certificate, load_settings
 from hemera.config.handler import Config, default_config
 from hemera.logging_setup import configure_logging, get_logger
+from hemera.services.entertainment.dtls_psk.server import DTLSPSKServer
+from hemera.services.entertainment.engine import EntertainmentEngine
 from hemera.services.mdns import MdnsAdvertiser
 from hemera.services.mqtt_client import MqttClient
+from hemera.services.ssdp import SsdpService
 
 logging = get_logger(__name__)
 
@@ -58,15 +59,29 @@ async def async_main() -> None:
 
     stop_event = asyncio.Event()
 
+    mqtt_client = MqttClient(
+        cfg, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_password, settings.mqtt_base_topic
+    )
+    mqtt_client.start()
+
+    engine = EntertainmentEngine(mqtt_client.publish, target_fps=settings.entertainment_fps)
+
+    def _psk_lookup(identity: str) -> bytes | None:
+        user = cfg.yaml_config["apiUsers"].get(identity)
+        return bytes.fromhex(user.client_key) if user is not None else None
+
+    dtls_server = DTLSPSKServer(
+        host=settings.bind_ip,
+        port=settings.entertainment_port,
+        psk_callback=_psk_lookup,
+        frame_callback=engine.handle_frame,
+    )
+
     async def _on_entertainment_start(group, owner: str) -> None:
-        # hemera.services.entertainment (DTLS/HueStream) is wired in here in a later
-        # project-plan step; for now the resource's `stream.active` flag is the only
-        # observable effect, which is enough for the Hue app / Sync app to see the
-        # area as "active" and for the two API surfaces to agree on state.
-        logging.info("Entertainment area %s (%s) started by %s — no streaming engine wired up yet", group.name, group.id_v1, owner)
+        await engine.start_session(group)
 
     async def _on_entertainment_stop(group) -> None:
-        logging.info("Entertainment area %s (%s) stopped", group.name, group.id_v1)
+        await engine.stop_session()
 
     hue_v1 = HueV1Api(cfg)
     hue_v1.set_entertainment_callbacks(_on_entertainment_start, _on_entertainment_stop)
@@ -96,10 +111,17 @@ async def async_main() -> None:
     mdns = MdnsAdvertiser(settings.bridge_id, settings.host_ip, settings.http_port)
     await mdns.start()
 
-    mqtt_client = MqttClient(
-        cfg, settings.mqtt_host, settings.mqtt_port, settings.mqtt_user, settings.mqtt_password, settings.mqtt_base_topic
-    )
-    mqtt_client.start()
+    ssdp = SsdpService(settings.host_ip, settings.http_port, settings.mac, settings.bridge_id)
+    await ssdp.start()
+
+    try:
+        await dtls_server.async_start()
+        logging.info("Hue Entertainment (DTLS) listening on %s:%d", settings.bind_ip, settings.entertainment_port)
+    except OSError as exc:
+        # Missing OpenSSL 3.x runtime (e.g. no `openssl`/`libssl3` package) or the
+        # port is taken — the rest of the bridge (pairing, lights, groups, scenes)
+        # keeps working; only Hue Entertainment streaming is unavailable.
+        logging.error("Hue Entertainment (DTLS) failed to start — streaming will not work: %s", exc)
 
     save_task = asyncio.create_task(_periodic_config_save(cfg, stop_event), name="config-autosave")
 
@@ -130,7 +152,10 @@ async def async_main() -> None:
         stop_event.set()
         save_task.cancel()
         eventstream_trim_task.cancel()
+        await engine.stop_session()
+        await dtls_server.async_stop()
         await mqtt_client.stop()
+        await ssdp.stop()
         await mdns.stop()
         await v1_runner.cleanup()
         await v2_runner.cleanup()

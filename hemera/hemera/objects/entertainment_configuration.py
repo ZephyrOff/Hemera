@@ -140,35 +140,55 @@ class EntertainmentConfiguration:
         if self.stream["active"]:
             result["active_streamer"] = {"rid": self.stream["owner"], "rtype": "auth_v1"}
 
+        for light, segment_index, total_segments, channel_id in self._iter_channels():
+            entertainment_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, light.id_v2 + "entertainment"))
+            location = self.locations.get(light, [{"x": 0, "y": 0, "z": 0}])
+            if segment_index == 0:
+                result["light_services"].append({"rtype": "light", "rid": light.id_v2})
+                result["locations"]["service_locations"].append({
+                    "equalization_factor": 1,
+                    "positions": location,
+                    "service": {"rid": entertainment_uuid, "rtype": "entertainment"},
+                    "position": location[0],
+                })
+            channel: dict = {
+                "channel_id": channel_id,
+                "members": [{"index": segment_index, "service": {"rid": entertainment_uuid, "rtype": "entertainment"}}],
+            }
+            if total_segments > 1 and segment_index < len(_GRADIENT_STRIP_POSITIONS):
+                channel["position"] = _GRADIENT_STRIP_POSITIONS[segment_index]
+            else:
+                channel["position"] = location[0]
+            result["channels"].append(channel)
+        return result
+
+    def _iter_channels(self):
+        """Yield (light, segment_index, total_segments, channel_id) in the exact
+        order/numbering used by get_v2_api()'s `channels` list — the contract the
+        streaming Entertainment engine's channel map (build_channel_map()) must
+        match, since a client builds its outgoing frame's channel_id from what
+        this method told it when it read/created this configuration."""
         channel_id = 0
         for ref in self.lights:
             light = ref()
             if not light:
                 continue
-            result["light_services"].append({"rtype": "light", "rid": light.id_v2})
-            entertainment_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, light.id_v2 + "entertainment"))
-            location = self.locations.get(light, [{"x": 0, "y": 0, "z": 0}])
-            result["locations"]["service_locations"].append({
-                "equalization_factor": 1,
-                "positions": location,
-                "service": {"rid": entertainment_uuid, "rtype": "entertainment"},
-                "position": location[0],
-            })
-
             is_gradient = light.modelid in _GRADIENT_MODELIDS
-            loops = light.protocol_cfg.get("points_capable", 7) if is_gradient else 1
-            for i in range(loops):
-                channel: dict = {
-                    "channel_id": channel_id,
-                    "members": [{"index": i, "service": {"rid": entertainment_uuid, "rtype": "entertainment"}}],
-                }
-                if is_gradient and i < len(_GRADIENT_STRIP_POSITIONS):
-                    channel["position"] = _GRADIENT_STRIP_POSITIONS[i]
-                else:
-                    channel["position"] = location[0]
-                result["channels"].append(channel)
+            total_segments = light.protocol_cfg.get("points_capable", 7) if is_gradient else 1
+            for segment_index in range(total_segments):
+                yield light, segment_index, total_segments, channel_id
                 channel_id += 1
-        return result
+
+    def build_channel_map(self) -> dict[int, tuple[object, int, int]]:
+        """channel_id -> (light, segment_index, total_segments_for_that_light).
+
+        Used by the Entertainment streaming engine to route incoming HueStream
+        v2 channels to the right light (and the right gradient segment).
+        """
+        return {
+            channel_id: (light, segment_index, total_segments)
+            for light, segment_index, total_segments, channel_id in self._iter_channels()
+        }
 
     def setV2Action(self, state: dict) -> None:
         set_group_action(self, v2_state_to_v1(state))
