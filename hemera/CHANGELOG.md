@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1
+
+- **Correction d'un vrai bug** : plusieurs réponses d'erreur v1 ("resource
+  not available") renvoyaient le code HTTP 404 en plus du corps JSON
+  d'erreur Hue standard. Or l'API Hue v1 renvoie **toujours HTTP 200**, même
+  en cas d'erreur — celle-ci est encodée uniquement dans le JSON
+  (`{"error": {...}}`), jamais via le statut HTTP (vérifié contre diyHue,
+  qui ne renvoie jamais de statut explicite ici). Certains clients comme Hue
+  Essentials n'attendent visiblement que ce format et plantent sur un vrai
+  404 ("Expected ... JSON input: 404"). Toutes les réponses d'erreur v1
+  renvoient maintenant HTTP 200, comme un vrai bridge.
+
 ## 0.5.0
 
 - **Suppression du verrou "link button" sur `POST /api`** (pairing). Trouvé

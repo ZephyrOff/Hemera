@@ -296,7 +296,7 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         light = self.yaml_config["lights"].get(request.match_info["id"])
         if light is None:
-            return web.json_response(_error(f"/lights/{request.match_info['id']}", "resource not available", 3), status=404)
+            return web.json_response(_error(f"/lights/{request.match_info['id']}", "resource not available", 3))
         return web.json_response(light.get_v1_api())
 
     async def h_light_state_put(self, request: web.Request) -> web.Response:
@@ -305,7 +305,7 @@ class HueV1Api:
         light_id = request.match_info["id"]
         light = self.yaml_config["lights"].get(light_id)
         if light is None:
-            return web.json_response(_error(f"/lights/{light_id}/state", "resource not available", 3), status=404)
+            return web.json_response(_error(f"/lights/{light_id}/state", "resource not available", 3))
         body = await self._json(request)
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
@@ -318,7 +318,7 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         light = self.yaml_config["lights"].get(request.match_info["id"])
         if light is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         body = await self._json(request)
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
@@ -374,7 +374,7 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         group = self.yaml_config["groups"].get(request.match_info["id"])
         if group is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         return web.json_response(group.get_v1_api())
 
     async def h_group_put(self, request: web.Request) -> web.Response:
@@ -383,7 +383,7 @@ class HueV1Api:
         group_id = request.match_info["id"]
         group = self.yaml_config["groups"].get(group_id)
         if group is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         body = await self._json(request)
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
@@ -400,7 +400,7 @@ class HueV1Api:
         group_id = request.match_info["id"]
         group = self.yaml_config["groups"].get(group_id)
         if group is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         body = await self._json(request)
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
@@ -428,7 +428,7 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         group = self.yaml_config["groups"].get(request.match_info["id"])
         if group is None or not isinstance(group, EntertainmentConfiguration):
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         body = await self._json(request) or {}
         stream = body.get("stream", body)
         active = bool(stream.get("active", False))
@@ -469,7 +469,7 @@ class HueV1Api:
 
             group_id = body["group"]
             if group_id not in self.yaml_config["groups"]:
-                return web.json_response(_error("/", "resource not available", 3), status=404)
+                return web.json_response(_error("/", "resource not available", 3))
             body["group"] = weakref.ref(self.yaml_config["groups"][group_id])
         else:
             light_ids = body.get("lights", [])
@@ -494,7 +494,7 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         scene = self.yaml_config["scenes"].get(request.match_info["id"])
         if scene is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         return web.json_response(scene.get_v1_api())
 
     async def h_scene_put(self, request: web.Request) -> web.Response:
@@ -503,7 +503,7 @@ class HueV1Api:
         scene_id = request.match_info["id"]
         scene = self.yaml_config["scenes"].get(scene_id)
         if scene is None:
-            return web.json_response(_error("/", "resource not available", 3), status=404)
+            return web.json_response(_error("/", "resource not available", 3))
         body = await self._json(request)
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
