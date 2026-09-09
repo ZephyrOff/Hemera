@@ -310,8 +310,16 @@ def default_config(bridge_id: str, mac: str, host_ip: str) -> dict:
         "ipaddress": host_ip,
         "netmask": "255.255.255.0",
         "gateway": host_ip.rsplit(".", 1)[0] + ".1",
-        "apiversion": "1.67.0",
-        "swversion": "1967054020",
+        # Matches Bifrost's currently-shipped defaults
+        # (crates/hue/src/lib.rs: HUE_BRIDGE_V2_DEFAULT_APIVERSION /
+        # _SWVERSION) rather than an older, lower version. The Hue app
+        # compares the bridge's reported version against the latest real
+        # firmware it knows about and nags "your bridge needs an update" (with
+        # no actual update possible, since this isn't real Signify hardware)
+        # if it looks outdated — bumping these to Bifrost's proven, currently
+        # up-to-date values avoids that permanently-stuck update prompt.
+        "apiversion": "1.70.0",
+        "swversion": "1970084010",
         "timezone": "Europe/Paris",
         "linkbutton": {"lastlinkbuttonpushed": 0},
         "mqtt": {"host": "127.0.0.1", "port": 1883, "user": "", "password": "", "base_topic": "zigbee2mqtt"},

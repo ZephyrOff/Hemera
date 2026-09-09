@@ -11,6 +11,7 @@ import os
 import ssl
 import signal
 import sys
+import time
 
 from aiohttp import web
 
@@ -26,10 +27,12 @@ from hemera.services.entertainment.engine import EntertainmentEngine
 from hemera.services.mdns import MdnsAdvertiser
 from hemera.services.mqtt_client import MqttClient
 from hemera.services.ssdp import SsdpService
+from hemera.services.update_check import check_for_update
 
 logging = get_logger(__name__)
 
 _CONFIG_SAVE_INTERVAL_S = 5.0
+_UPDATE_CHECK_INTERVAL_S = 24 * 60 * 60.0
 
 
 async def _periodic_config_save(cfg: Config, stop: asyncio.Event) -> None:
@@ -39,6 +42,17 @@ async def _periodic_config_save(cfg: Config, stop: asyncio.Event) -> None:
         except TimeoutError:
             pass
         cfg.save_dirty_if_needed()
+
+
+async def _periodic_update_check(cfg: Config, stop: asyncio.Event) -> None:
+    # Matches diyHue's own cadence (services/scheduler.py rechecks daily) —
+    # see hemera.services.update_check for why this needs to happen at all.
+    while not stop.is_set():
+        await check_for_update(cfg)
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=_UPDATE_CHECK_INTERVAL_S)
+        except TimeoutError:
+            pass
 
 
 async def async_main() -> None:
@@ -51,7 +65,29 @@ async def async_main() -> None:
 
     cfg = Config(settings.config_dir)
     is_first_run = not os.path.exists(cfg._config_path("config"))
-    cfg.load_config(default_config(settings.bridge_id, settings.mac, settings.host_ip))
+    defaults = default_config(settings.bridge_id, settings.mac, settings.host_ip)
+    cfg.load_config(defaults)
+    # apiversion/swversion are software identity, not user config — like mac
+    # below, they have no admin-panel-owned competing source of truth, so the
+    # current build's values always win. An install that paired against an
+    # older Hemera version would otherwise keep reporting that old version
+    # forever (load_config() only applies `defaults` on a missing config
+    # file, never merges it into an existing one) — and the Hue app compares
+    # the reported version against the latest real firmware it knows about,
+    # nagging "update required" (with no update actually possible) once it
+    # looks outdated enough.
+    if (
+        cfg.yaml_config["config"].get("apiversion") != defaults["apiversion"]
+        or cfg.yaml_config["config"].get("swversion") != defaults["swversion"]
+    ):
+        logging.info(
+            "Updating reported apiversion/swversion to %s/%s (was %s/%s)",
+            defaults["apiversion"], defaults["swversion"],
+            cfg.yaml_config["config"].get("apiversion"), cfg.yaml_config["config"].get("swversion"),
+        )
+        cfg.yaml_config["config"]["apiversion"] = defaults["apiversion"]
+        cfg.yaml_config["config"]["swversion"] = defaults["swversion"]
+        cfg.mark_dirty("config")
     if is_first_run:
         # Seed from the add-on options / env vars on first boot only. Once
         # persisted, the admin panel is the source of truth for MQTT settings —
@@ -61,6 +97,15 @@ async def async_main() -> None:
             "user": settings.mqtt_user, "password": settings.mqtt_password,
             "base_topic": settings.mqtt_base_topic,
         }
+        # Same reasoning as MQTT above: seed the add-on's `timezone` option
+        # (itself defaulted to Home Assistant's own configured timezone by
+        # the rootfs run script, unless overridden) once, then let whichever
+        # value the Hue app itself PUTs to /api/{user}/config during
+        # onboarding take over — re-forcing this every boot would fight with
+        # the app's own setting and reintroduce the same "configure your
+        # bridge's timezone" nag it was meant to fix.
+        if settings.timezone:
+            cfg.yaml_config["config"]["timezone"] = settings.timezone
         cfg.mark_dirty("config")
     # Unlike MQTT (owned by the admin panel once set), `mac` has no such
     # competing source of truth — it's an add-on option only, so an
@@ -73,6 +118,17 @@ async def async_main() -> None:
         cfg.yaml_config["config"]["mac"] = settings.mac
         cfg.yaml_config["config"]["bridgeid"] = settings.bridge_id
         cfg.mark_dirty("config")
+    # Apply whatever timezone ended up in config (seeded above, previously
+    # persisted, or set by the Hue app via PUT /api/{user}/config on a prior
+    # run) to this process every boot — matches diyHue's configManager
+    # (Apache-2.0): the "localtime" field in /api/config, and anything else
+    # relying on the system local time, otherwise stays on the container's
+    # default TZ regardless of what the config file says.
+    configured_tz = cfg.yaml_config["config"].get("timezone")
+    if configured_tz:
+        os.environ["TZ"] = configured_tz
+        if hasattr(time, "tzset"):  # Linux only; no-op on Windows dev
+            time.tzset()
     mqtt_cfg = cfg.yaml_config["config"]["mqtt"]
 
     cert_path = ensure_certificate(settings.config_dir, settings.mac, settings.host_ip)
@@ -185,6 +241,7 @@ async def async_main() -> None:
         logging.error("Hue Entertainment (DTLS) failed to start — streaming will not work: %s", exc)
 
     save_task = asyncio.create_task(_periodic_config_save(cfg, stop_event), name="config-autosave")
+    update_check_task = asyncio.create_task(_periodic_update_check(cfg, stop_event), name="update-check")
 
     loop = asyncio.get_running_loop()
     for sig_name in ("SIGINT", "SIGTERM"):
@@ -212,6 +269,7 @@ async def async_main() -> None:
         logging.info("Shutting down")
         stop_event.set()
         save_task.cancel()
+        update_check_task.cancel()
         eventstream_trim_task.cancel()
         await engine.stop_session()
         await dtls_server.async_stop()

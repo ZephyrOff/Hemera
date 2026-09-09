@@ -8,6 +8,14 @@ configuration:
       host networking (e.g. a Docker bridge instead of your real NIC) and
       silently break pairing with the official Hue app — set this
       explicitly if pairing gets stuck on "press the button".
+  timezone:
+    name: Timezone
+    description: >-
+      IANA timezone (e.g. Europe/Paris) reported to the Hue app. Leave empty
+      to use Home Assistant's own configured timezone automatically. Only
+      applied once, on first start — after that, whatever timezone the Hue
+      app itself sets during onboarding takes over, so changing this later
+      has no effect unless you clear the add-on's persisted data.
   mqtt_host:
     name: MQTT host
     description: >-

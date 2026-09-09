@@ -18,6 +18,7 @@ for clients that check it.
 
 from __future__ import annotations
 
+import os
 import secrets
 import time
 import uuid
@@ -26,6 +27,7 @@ from datetime import datetime, timezone
 
 from aiohttp import web
 
+from hemera.api.v1.timezones import TIMEZONES
 from hemera.config.handler import Config
 from hemera.logging_setup import get_logger
 from hemera.objects.api_user import ApiUser
@@ -101,6 +103,12 @@ class HueV1Api:
             ("GET", "/api/{username}/config", self.h_config_auth),
             ("PUT", "/api/{username}/config", self.h_put_config),
             ("GET", "/api/{username}/capabilities", self.h_capabilities),
+            # Must be registered before the /api/{username}/{resource}/{rid}
+            # catch-all below, or that would swallow this instead (aiohttp
+            # matches dynamic routes in registration order). Backs the Hue
+            # app's timezone-picker screen — see h_put_config's handling of
+            # the "timezone" field for why this pairing matters.
+            ("GET", "/api/{username}/info/timezones", self.h_info_timezones),
             ("GET", "/api/{username}/lights", self.h_lights_list),
             ("GET", "/api/{username}/lights/{id}", self.h_light_get),
             ("PUT", "/api/{username}/lights/{id}/state", self.h_light_state_put),
@@ -149,7 +157,10 @@ class HueV1Api:
         cfg = self.yaml_config["config"]
         result = {
             "name": cfg["name"],
-            "datastoreversion": "163",
+            # Matches Bifrost's current default (crates/hue/src/legacy_api.rs)
+            # rather than an older value — see apiversion/swversion comment in
+            # default_config() for why staying current here matters.
+            "datastoreversion": "176",
             "swversion": cfg["swversion"],
             "apiversion": cfg["apiversion"],
             "mac": cfg["mac"],
@@ -221,6 +232,11 @@ class HueV1Api:
             return web.json_response(_error("/", "unauthorized user"))
         return web.json_response(self._build_config(authed=True))
 
+    async def h_info_timezones(self, request: web.Request) -> web.Response:
+        if self._check_user(request) is None:
+            return web.json_response(_error("/", "unauthorized user"))
+        return web.json_response(TIMEZONES)
+
     async def h_put_config(self, request: web.Request) -> web.Response:
         if self._check_user(request) is None:
             return web.json_response(_error("/", "unauthorized user"))
@@ -231,6 +247,18 @@ class HueV1Api:
             self.arm_link_button()
         if "name" in body:
             self.yaml_config["config"]["name"] = body["name"]
+        if "timezone" in body:
+            # Previously accepted-and-ignored: the app would PUT a timezone
+            # during onboarding, get a 200, but never see it reflected back —
+            # so it kept re-prompting "configure your bridge's timezone"
+            # forever. Matches diyHue's flaskUI/restful.py: persist it and
+            # apply it to the process's own TZ so the "localtime" field in
+            # /api/config actually reflects it too.
+            tz = body["timezone"]
+            self.yaml_config["config"]["timezone"] = tz
+            os.environ["TZ"] = tz
+            if hasattr(time, "tzset"):  # Linux only; no-op on Windows dev
+                time.tzset()
         self.cfg.mark_dirty("config")
         return web.json_response(_success_list("/config", body))
 

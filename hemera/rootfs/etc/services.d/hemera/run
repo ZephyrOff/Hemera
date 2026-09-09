@@ -15,6 +15,16 @@ else
     bashio::log.warning "No MAC configured — auto-detecting one, which can pick the wrong interface under host networking and break pairing with the official Hue app. If pairing shows \"press the button\" forever, set the 'mac' option to your host's real network MAC address."
 fi
 
+if bashio::config.has_value 'timezone'; then
+    export HEMERA_TIMEZONE="$(bashio::config 'timezone')"
+else
+    # Falls back to Home Assistant's own configured timezone (Settings ->
+    # General) rather than a hardcoded default — avoids the Hue app's
+    # "configure your bridge's timezone" prompt on first pairing for the
+    # common case where the user never touches this option.
+    export HEMERA_TIMEZONE="$(bashio::info.timezone)"
+fi
+
 if bashio::config.has_value 'mqtt_host'; then
     bashio::log.info "Using manually configured MQTT broker"
     export HEMERA_MQTT_HOST="$(bashio::config 'mqtt_host')"

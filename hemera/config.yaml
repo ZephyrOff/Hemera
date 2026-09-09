@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.6.0"
+version: "0.7.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -34,6 +34,7 @@ services:
   - mqtt:want
 options:
   mac: ""
+  timezone: ""
   mqtt_host: ""
   mqtt_port: 1883
   mqtt_user: ""
@@ -43,6 +44,7 @@ options:
   log_level: "info"
 schema:
   mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)?"
+  timezone: "str?"
   mqtt_host: "str?"
   mqtt_port: "port?"
   mqtt_user: "str?"

@@ -45,6 +45,7 @@ class Settings:
     admin_port: int
     mac: str
     bridge_id: str
+    timezone: str
     mqtt_host: str
     mqtt_port: int
     mqtt_user: str
@@ -95,6 +96,7 @@ def load_settings() -> Settings:
         admin_port=_env_int("HEMERA_ADMIN_PORT", 8099),
         mac=mac,
         bridge_id=_env("HEMERA_BRIDGE_ID") or make_bridge_id(mac),
+        timezone=_env("HEMERA_TIMEZONE", ""),
         mqtt_host=_env("HEMERA_MQTT_HOST", "127.0.0.1"),
         mqtt_port=_env_int("HEMERA_MQTT_PORT", 1883),
         mqtt_user=_env("HEMERA_MQTT_USER", ""),

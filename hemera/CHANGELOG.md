@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.7.0
+
+Suite au succès de l'appairage en 0.6.0, deux nouveaux irritants signalés
+par l'utilisateur, tous deux liés au fait qu'un pont virtuel n'a ni vrai
+firmware à installer ni horloge/fuseau réellement configurés en usine :
+
+- **"Le Hue Bridge n'est pas à jour"** : le `swversion`/`apiversion`
+  renvoyés (`1967054020`/`1.67.0`) étaient simplement figés dans le code
+  depuis la première version. L'app Hue compare ce qu'elle lit à la
+  dernière version connue de Philips et affiche un bandeau de mise à jour
+  bloquant si notre valeur paraît trop ancienne — sans qu'aucune mise à
+  jour ne soit jamais réellement possible ici.
+  - Solution retrouvée dans diyHue (`services/updateManager.py::versionCheck()`) :
+    interroger directement l'API publique de Philips
+    (`https://firmware.meethue.com/v1/checkupdate/?deviceTypeId=BSB002&version=...`)
+    et adopter la version qu'elle renvoie si elle est plus récente que la
+    nôtre — exactement ce qu'un vrai pont fait pour rester "à jour" en
+    permanence aux yeux de l'app. Nouveau module
+    `services/update_check.py` (portage asyncio/aiohttp de cette logique),
+    appelé une fois au démarrage puis vérifié à nouveau toutes les 24h.
+    Testé en direct contre l'API réelle de Philips au moment d'écrire ceci :
+    elle a immédiatement fait passer une valeur `1.70.0`/`1970084010` (le
+    défaut actuel de Bifrost, utilisé entretemps comme valeur de repli) à
+    `1.79.0`/`1978293000` — confirmant qu'une valeur figée, y compris
+    récente, se périme vite et que seule une vérification dynamique reste
+    juste dans la durée. Si Philips est injoignable (pas de connexion
+    Internet), la valeur de repli actuelle est conservée sans erreur
+    bloquante.
+  - `datastoreversion` aligné sur la valeur actuelle de Bifrost ("176" au
+    lieu de "163", `crates/hue/src/legacy_api.rs`).
+- **"Configurez le fuseau horaire de votre pont"**, en boucle : l'app Hue
+  envoie bien `PUT /api/{user}/config` avec un champ `timezone` pendant la
+  configuration, mais ce champ était silencieusement ignoré (seuls `name`
+  et `linkbutton` étaient pris en compte) — l'app recevait un 200 mais ne
+  voyait jamais son changement appliqué, donc reproposait indéfiniment
+  l'écran de configuration.
+  - `timezone` est désormais persisté et appliqué à l'environnement du
+    processus (`os.environ['TZ']` + `time.tzset()`), comme le fait déjà
+    diyHue dans `flaskUI/restful.py`/`configManager/configHandler.py`
+    (`tzset` est protégé par un `hasattr` — absent sous Windows, présent
+    sous Linux, la cible réelle de déploiement).
+  - Nouvel endpoint `GET /api/{user}/info/timezones`, jusqu'ici absent,
+    renvoyant la liste des fuseaux valides (552 noms, portés depuis
+    `BridgeEmulator/functions/core.py::capabilities()` de diyHue) — sans
+    lui, l'écran de sélection de fuseau de l'app n'a rien à afficher.
+  - **Nouvelle option d'add-on `timezone`** (vide par défaut). Si laissée
+    vide, le script de démarrage utilise automatiquement le fuseau
+    horaire déjà configuré dans Home Assistant (`bashio::info.timezone`)
+    plutôt qu'une valeur figée — à l'image de la convention `TZ=` des
+    docker-compose officiels de diyHue. Cette valeur ne sert qu'à amorcer
+    la configuration au tout premier démarrage : une fois que l'app Hue a
+    elle-même défini un fuseau via son propre écran de configuration,
+    c'est cette valeur-là qui fait foi (même logique que pour MQTT — pas
+    de source de vérité concurrente qui écraserait un réglage déjà fait
+    dans l'app à chaque redémarrage).
+
 ## 0.6.0
 
 **Refonte complète de l'appairage**, à partir d'une comparaison ligne à ligne

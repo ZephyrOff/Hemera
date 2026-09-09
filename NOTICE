@@ -16,7 +16,16 @@ as required by the Apache License 2.0.
    Code adapted from BridgeEmulator/ into: hemera/hemera/objects/,
    hemera/hemera/lights/, hemera/hemera/config/,
    hemera/hemera/services/mqtt_client.py, hemera/hemera/api/ (v1 and v2
-   CLIP resource shapes).
+   CLIP resource shapes), hemera/hemera/services/update_check.py (ported
+   from services/updateManager.py::versionCheck() — checking Philips' own
+   firmware-update API and self-reporting whatever version it returns, so
+   the Hue app doesn't flag the bridge as out of date), and
+   hemera/hemera/api/v1/timezones.py (the GET .../info/timezones list of
+   valid timezone names, copied verbatim from
+   BridgeEmulator/functions/core.py::capabilities()) plus the timezone
+   persistence/`TZ` env var handling in hemera/hemera/api/v1/routes.py's
+   PUT .../config, adapted from flaskUI/restful.py and
+   configManager/configHandler.py.
 
 2. ha-hue-entertainment
    https://github.com/83noit/ha-hue-entertainment
