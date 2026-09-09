@@ -235,8 +235,13 @@ class HueV1Api:
         )
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
-        if not self.link_button_active:
-            return web.json_response(_error("", "link button not pressed", 101))
+        # No link-button gate: matches Bifrost (a modern, actively-maintained
+        # Hue-bridge-for-Zigbee2MQTT emulator)'s proven pairing behaviour —
+        # its post_api() always succeeds unconditionally, no timestamp check
+        # at all. For a personal home-LAN bridge this is an acceptable
+        # trade-off (anyone who can reach the bridge can pair), and removes
+        # an entire axis of "why won't the official app just send POST /api"
+        # timing uncertainty that a 30-60s window otherwise introduces.
         device_type = body.get("devicetype", "unknown")
         generate_clientkey = bool(body.get("generateclientkey", False))
 

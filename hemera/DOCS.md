@@ -63,10 +63,9 @@ Accessible via le bouton "Web UI" de l'add-on, ou directement sur
 comme le bouton physique d'un vrai bridge, l'accès au réseau local est
 considéré comme suffisant.
 
-- **Bouton de couplage** : le simuler depuis le panel arme une fenêtre de
-  pairing de 60 secondes — lancez le pairing dans l'application Hue juste
-  après. Plus besoin de redémarrer l'add-on si la fenêtre expire avant que
-  vous n'arriviez à cet écran dans l'app.
+- **Bouton de couplage** : le pairing avec l'application Hue réussit
+  toujours, sans condition — pas besoin de l'armer avant. Le bouton reste
+  disponible pour compatibilité/affichage.
 - **MQTT** : modifier et reconnecter la connexion au broker sans redémarrer.
   Une fois enregistrée depuis le panel, cette configuration prend le pas sur
   les options de l'add-on au démarrage suivant.
@@ -81,3 +80,11 @@ considéré comme suffisant.
 L'état du pont (utilisateurs couplés, lumières, groupes, scènes, certificat)
 est stocké dans `/data`, propre à cet add-on — il survit aux redémarrages et
 mises à jour, et est inclus dans les sauvegardes Home Assistant.
+
+Le certificat TLS est à `/data/cert.pem`. Contrairement à diyHue (qui utilise
+`/config/diyhue`, visible depuis le partage Samba/l'éditeur de fichiers HA),
+`/data` est un stockage privé de l'add-on, non accessible depuis ces outils —
+il faut passer par le Terminal/SSH de HA (`docker exec addon_local_hemera ...`)
+pour l'inspecter manuellement. En pratique ce ne devrait pas être nécessaire :
+le certificat est régénéré automatiquement dès qu'il est détecté comme
+obsolète (MAC ou IP changée, extensions manquantes).

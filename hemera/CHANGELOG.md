@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0
+
+- **Suppression du verrou "link button" sur `POST /api`** (pairing). Trouvé
+  en examinant le code source de Bifrost (`bifrost-master/src/routes/api.rs`
+  — un pont Hue pour Zigbee2MQTT moderne et activement maintenu, donc
+  directement comparable) : son `post_api()` réussit **inconditionnellement**,
+  sans aucune vérification de fenêtre temporelle. Les logs montraient que
+  l'application Hue officielle ne renvoyait jamais `POST /api`, quelle que
+  soit la durée d'activation du bouton (fenêtre au démarrage, bouton du
+  panel, les deux cumulés) — pendant que d'autres clients (Echo) pairaient
+  sans problème pendant ce temps. Plutôt que de continuer à deviner ce que
+  l'app attend exactement du champ `linkbutton`, on adopte le comportement
+  éprouvé : le pairing réussit désormais toujours, immédiatement.
+  Compromis de sécurité assumé : n'importe quel appareil pouvant joindre le
+  pont peut se pairer, sans confirmation — acceptable pour un pont Hue
+  personnel sur un réseau local domestique, à l'image de Bifrost.
+- Le bouton "Simuler l'appui" du panel reste disponible (affichage /
+  compatibilité), mais n'est plus nécessaire pour que le pairing aboutisse.
+
 ## 0.4.0
 
 - **Nouvelle option `mac`**, absente jusqu'ici. Trouvée en examinant l'add-on

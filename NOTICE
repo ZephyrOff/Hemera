@@ -31,10 +31,16 @@ as required by the Apache License 2.0.
 The Home Assistant add-on packaging (config.yaml, Dockerfile, rootfs s6
 services) follows the conventions used by diyhue/hassio-addon
 (https://github.com/diyhue/hassio-addon), independently written for this
-project.
+project. The `mac` add-on option follows the same documented rationale as
+diyhue/hassio-addon's own `mac` option.
 
-Neither diyHue, ha-hue-entertainment, hassio-addon, nor their authors are
-affiliated with, or endorse, this project. "Philips Hue" and "Hue
-Entertainment" are trademarks of Signify Holding; this project is an
+The v1 pairing endpoint's behaviour (no link-button timing gate; every
+`POST /api` succeeds) follows the design used by Bifrost
+(https://github.com/chrivers/bifrost, GPL-3.0) — an independent
+reimplementation of the same behaviour, no source code copied.
+
+Neither diyHue, ha-hue-entertainment, hassio-addon, Bifrost, nor their
+authors are affiliated with, or endorse, this project. "Philips Hue" and
+"Hue Entertainment" are trademarks of Signify Holding; this project is an
 independent, unofficial, community re-implementation for personal/
 interoperability use.
