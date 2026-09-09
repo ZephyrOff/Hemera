@@ -227,7 +227,12 @@ class HueV1Api:
         return web.json_response(_success_list("/config", body))
 
     async def h_create_user(self, request: web.Request) -> web.Response:
+        raw = await request.read()
         body = await self._json(request)
+        logging.info(
+            "POST /api from %s (content-type=%s, body=%r) — link button active: %s",
+            request.remote, request.content_type, raw[:200], self.link_button_active,
+        )
         if body is None:
             return web.json_response(_error("/", "body contains invalid json", 2))
         if not self.link_button_active:

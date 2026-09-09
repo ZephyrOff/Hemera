@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+- Ajout d'un log explicite pour chaque tentative de pairing (`POST /api`) :
+  IP, content-type, corps brut, et état du bouton de couplage au moment de
+  la requête — pour diagnostiquer un blocage sans deviner. Consultable dans
+  l'onglet Journal de l'add-on.
+
 ## 0.3.1
 
 - Correction du format du champ `webui` (`[PORT:8099]` au lieu de `8099`),
