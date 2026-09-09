@@ -1,0 +1,20 @@
+configuration:
+  mqtt_host:
+    name: MQTT host
+    description: >-
+      Leave empty to auto-discover the Mosquitto broker add-on. Set this
+      only if your MQTT broker is not the Mosquitto add-on.
+  mqtt_port:
+    name: MQTT port
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_user:
+    name: MQTT username
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_password:
+    name: MQTT password
+    description: Ignored when mqtt_host is left empty (auto-discovered instead).
+  mqtt_base_topic:
+    name: Zigbee2MQTT base topic
+    description: The base_topic configured in Zigbee2MQTT (default "zigbee2mqtt").
+  log_level:
+    name: Log level

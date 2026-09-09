@@ -1,0 +1,27 @@
+[project]
+name = "hemera"
+version = "0.1.0"
+description = "Virtual Philips Hue Bridge backed by Zigbee2MQTT, with Hue Entertainment (Sync Box) support — packaged as a Home Assistant add-on."
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.10",
+    "aiomqtt>=2.3",
+    "paho-mqtt>=2.1",
+    "zeroconf>=0.132",
+    "cryptography>=43.0",
+    "PyYAML>=6.0",
+    "cffi>=1.17",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["hemera*"]

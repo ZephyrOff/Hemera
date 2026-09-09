@@ -1,0 +1,48 @@
+---
+name: Hemera
+version: "0.1.0"
+slug: hemera
+description: >-
+  Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
+  la Hue Sync Box (Hue Entertainment).
+url: "https://github.com/ZephyrOff/HAHB"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+# Required, not optional: mDNS (bridge discovery) and SSDP need real L2
+# multicast visibility that Docker's default bridge/NAT networking does not
+# provide — diyHue's own add-on documents the same constraint for the same
+# reason. Our own HTTP(S)/DTLS ports are bound directly on the host as
+# configured below; the "ports" section is informational under host_network.
+host_network: true
+ports:
+  80/tcp: 80
+  443/tcp: 443
+  2100/udp: 2100
+ports_description:
+  80/tcp: "Hue API v1 (HTTP)"
+  443/tcp: "Hue API v2 / CLIP (HTTPS)"
+  2100/udp: "Hue Entertainment (DTLS/HueStream) — not wired up yet"
+# Lets bashio::services pull the Mosquitto add-on's connection details
+# automatically when mqtt_host is left empty in options (see rootfs run script).
+services:
+  - mqtt:want
+options:
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_user: ""
+  mqtt_password: ""
+  mqtt_base_topic: "zigbee2mqtt"
+  log_level: "info"
+schema:
+  mqtt_host: "str?"
+  mqtt_port: "port?"
+  mqtt_user: "str?"
+  mqtt_password: "password?"
+  mqtt_base_topic: "str"
+  log_level: "list(debug|info|warning|error)"
+# No `map` entries needed: persisted state (paired users, lights/groups/
+# scenes, TLS cert) lives in /data, which every add-on gets automatically —
+# no shared folder access (config/ssl/share) is required.

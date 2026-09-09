@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# runtime data for standalone (non-add-on) dev/testing only — anchored to
+# repo root so it doesn't match hemera/hemera/config/ (the Python package)
+/config/
+*.yaml.tmp
+*.corrupt
+cert.pem
+
+# reference archives kept locally during research, not part of the source tree
+*.zip
+document_etude.pdf

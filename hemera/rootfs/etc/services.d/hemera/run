@@ -1,0 +1,30 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+set -e
+
+export HEMERA_CONFIG_DIR="/data"
+export HEMERA_HTTP_PORT="80"
+export HEMERA_HTTPS_PORT="443"
+export HEMERA_LOG_LEVEL="$(bashio::config 'log_level' | tr '[:lower:]' '[:upper:]')"
+export HEMERA_MQTT_BASE_TOPIC="$(bashio::config 'mqtt_base_topic')"
+
+if bashio::config.has_value 'mqtt_host'; then
+    bashio::log.info "Using manually configured MQTT broker"
+    export HEMERA_MQTT_HOST="$(bashio::config 'mqtt_host')"
+    export HEMERA_MQTT_PORT="$(bashio::config 'mqtt_port')"
+    export HEMERA_MQTT_USER="$(bashio::config 'mqtt_user')"
+    export HEMERA_MQTT_PASSWORD="$(bashio::config 'mqtt_password')"
+elif bashio::services.available 'mqtt'; then
+    bashio::log.info "No MQTT host configured — auto-discovering the Mosquitto broker add-on"
+    export HEMERA_MQTT_HOST="$(bashio::services 'mqtt' 'host')"
+    export HEMERA_MQTT_PORT="$(bashio::services 'mqtt' 'port')"
+    export HEMERA_MQTT_USER="$(bashio::services 'mqtt' 'username')"
+    export HEMERA_MQTT_PASSWORD="$(bashio::services 'mqtt' 'password')"
+else
+    bashio::log.warning "No MQTT host configured and no Mosquitto add-on found — set mqtt_host in the add-on options"
+    export HEMERA_MQTT_HOST="127.0.0.1"
+    export HEMERA_MQTT_PORT="1883"
+fi
+
+bashio::log.info "Starting Hemera..."
+exec python3 -m hemera.main
