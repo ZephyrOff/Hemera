@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- Fenêtre de pairing portée de 30 à 60 secondes.
+- Nouvelle route `POST /linkbutton` (non authentifiée, comme le bouton
+  physique d'un vrai bridge) pour réarmer le pairing sans redémarrer
+  l'add-on — corrige le cas où l'application Hue reste bloquée sur "Appuyez
+  sur le bouton" parce que la fenêtre de 30s au démarrage avait déjà expiré.
+
 ## 0.2.0
 
 - Découverte SSDP/UPnP (M-SEARCH + NOTIFY), en complément du mDNS.

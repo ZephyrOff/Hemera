@@ -44,9 +44,19 @@ trouvent le pont sur le réseau local. Ce n'est pas configurable.
 
 ## Pairing avec l'application Hue
 
-Le bouton de couplage est armé automatiquement pendant 30 secondes au
-démarrage de l'add-on. Redémarrez l'add-on pour relancer une fenêtre de
-pairing.
+Le bouton de couplage est armé automatiquement pendant 60 secondes au
+démarrage de l'add-on. Si l'application reste bloquée sur "Appuyez sur le
+bouton en haut du Hue Bridge" (fenêtre expirée avant que vous n'arriviez à
+cet écran), pas besoin de redémarrer l'add-on : réarmez le bouton avec
+
+```bash
+curl -X POST http://<IP de votre serveur HA>/linkbutton
+```
+
+puis relancez immédiatement le pairing dans l'application (nouvelle fenêtre
+de 60 secondes). Cette route n'est volontairement pas authentifiée — comme
+le bouton physique d'un vrai bridge, l'accès au réseau local est considéré
+comme suffisant.
 
 ## Persistance
 

@@ -34,7 +34,7 @@ from hemera.objects.group import Group
 
 logging = get_logger(__name__)
 
-LINK_BUTTON_TIMEOUT = 30.0
+LINK_BUTTON_TIMEOUT = 60.0
 
 
 def _error(address: str, description: str, error_type: int = 1) -> list:
@@ -82,6 +82,14 @@ class HueV1Api:
     def register_routes(self, app: web.Application) -> None:
         routes = [
             ("GET", "/description.xml", self.h_description_xml),
+            # Deliberately unauthenticated, like the real bridge's physical link
+            # button: being able to reach this HTTP port already means you're on
+            # the LAN, the same trust level a physical button press implies.
+            # Needed because the only *other* way to (re)arm pairing is a
+            # restart (30-90s auto-arm window) or, on a non-add-on deployment,
+            # SIGUSR1 — neither is convenient once the add-on has been running
+            # a while and a client's initial pairing window has lapsed.
+            ("POST", "/linkbutton", self.h_arm_linkbutton),
             ("GET", "/api/nouser/config", self.h_config_unauth),
             ("GET", "/api/config", self.h_config_unauth),
             ("POST", "/api", self.h_create_user),
@@ -188,6 +196,10 @@ class HueV1Api:
             "<presentationURL>index.html</presentationURL>\n</device>\n</root>"
         )
         return web.Response(text=xml, content_type="text/xml")
+
+    async def h_arm_linkbutton(self, request: web.Request) -> web.Response:
+        self.arm_link_button()
+        return web.json_response({"linkbutton": True, "expires_in": LINK_BUTTON_TIMEOUT})
 
     async def h_config_unauth(self, request: web.Request) -> web.Response:
         return web.json_response(self._build_config(authed=False))
