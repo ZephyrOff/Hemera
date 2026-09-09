@@ -35,9 +35,15 @@ project. The `mac` add-on option follows the same documented rationale as
 diyhue/hassio-addon's own `mac` option.
 
 The v1 pairing endpoint's behaviour (no link-button timing gate; every
-`POST /api` succeeds) follows the design used by Bifrost
-(https://github.com/chrivers/bifrost, GPL-3.0) — an independent
-reimplementation of the same behaviour, no source code copied.
+`POST /api` succeeds), the self-signed certificate's subject/validity/
+extensions (CN=bridgeid, no SAN, fixed 2017-2038 validity window,
+AuthorityKeyIdentifier), the TLS cipher/ALPN configuration, the SSDP
+`SERVER` header format, the mDNS advertised port, and the additional
+`/api/{user}/config` fields (`analyticsconsent`, `portalconnection`,
+`proxyaddress`, `proxyport`) follow the design used by Bifrost
+(https://github.com/chrivers/bifrost, GPL-3.0) — independent
+reimplementations of the same observed/documented behaviour, no source code
+copied.
 
 Neither diyHue, ha-hue-entertainment, hassio-addon, Bifrost, nor their
 authors are affiliated with, or endorse, this project. "Philips Hue" and

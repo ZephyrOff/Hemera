@@ -172,6 +172,14 @@ class HueV1Api:
             "internetservices": {"internet": "disconnected", "remoteaccess": "disconnected", "swupdate": "disconnected", "time": "disconnected"},
             "swupdate2": {"checkforupdate": False, "state": "noupdates", "autoinstall": {"on": False, "updatetime": "T14:00:00"}},
             "backup": {"errorcode": 0, "status": "idle"},
+            # Present on a real bridge's authenticated /api/{user}/config (see
+            # Bifrost's ApiConfig struct, crates/hue/src/legacy_api.rs) but
+            # missing from our response entirely — some clients validate the
+            # full config shape before proceeding with pairing/setup.
+            "analyticsconsent": False,
+            "portalconnection": "disconnected",
+            "proxyaddress": "none",
+            "proxyport": 0,
         }
         if authed:
             result["whitelist"] = {

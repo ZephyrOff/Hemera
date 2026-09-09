@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.6.0
+
+**Refonte complète de l'appairage**, à partir d'une comparaison ligne à ligne
+avec le code source de Bifrost (`chrivers/bifrost`, GPL-3.0 — un pont Hue
+pour Zigbee2MQTT actif, confirmé par l'utilisateur comme s'appairant
+parfaitement avec l'app Hue officielle sur ce même réseau). Tous les
+correctifs précédents (suppression du verrou "link button", correction des
+404, option `mac`, premier alignement TLS) restent en place mais n'avaient
+pas suffi : le problème vient d'un cumul de petites déviations protocolaires
+qui, prises isolément, passent inaperçues avec des clients tolérants (Echo,
+Hue Essentials) mais bloquent l'app officielle avant même l'envoi de
+`POST /api`. Chaque point ci-dessous cite précisément le fichier Bifrost
+correspondant.
+
+- **mDNS annonce désormais le port 443 (HTTPS), pas 80** — trouvé dans
+  `server/mdns.rs` : `let service_port = 443;`. On annonçait jusqu'ici le
+  port HTTP, alors que le SSDP, lui, reste bien sur 80 (confirmé par
+  `server/ssdp.rs` : `http://{}:80/description.xml`).
+- **En-tête SSDP `SERVER` corrigé** en `Hue/1.0 UPnP/1.0 IpBridge/{apiversion}`
+  (`server/ssdp.rs`, avec son propre commentaire : *"Hue Essentials strikes
+  again: server name must look like this"*) — on utilisait auparavant le
+  format diyHue `Linux/3.14.0 UPnP/1.0 IpBridge/1.20.0`, une convention plus
+  ancienne et différente.
+- **Certificat entièrement réaligné sur `server/certificate.rs`** (dont le
+  commentaire précise : *"Great care has been taken to match real
+  certificates"*) :
+  - `CN` = `bridgeid` et non plus la `mac` — un vrai bridge (et Bifrost)
+    utilise le bridgeid comme identité du certificat.
+  - **Suppression du Subject Alternative Name** ajouté en 0.3.4 : ni un vrai
+    bridge ni Bifrost n'en ont un ; cet ajout n'avait de toute façon pas
+    résolu le blocage (confirmé par l'utilisateur : "Toujours pareil").
+  - **Fenêtre de validité fixe** `2017-01-01` → `2038-01-19T03:14:07`
+    (au lieu d'une fenêtre relative now±jours) — les vrais bridges (et
+    Bifrost) utilisent ces bornes exactes plutôt qu'une date de génération.
+  - **Ajout de l'extension `AuthorityKeyIdentifier`**, absente jusqu'ici.
+  - Numéro de série désormais dérivé du bridgeid (comme
+    `SerialNumber::new(&hue::bridge_id_raw(mac))`) plutôt qu'aléatoire.
+  - Le certificat existant est de nouveau détecté comme obsolète et
+    régénéré automatiquement au démarrage (CN et AuthorityKeyIdentifier).
+- **Profil TLS élargi, pas restreint** — correction d'une fausse piste de la
+  0.3.5 : `server/http.rs` construit explicitement un profil équivalent à
+  `mozilla_intermediate_v5` plutôt que le défaut `mozilla_modern_v5` de sa
+  bibliothèque, avec ce commentaire : *"That protocol version [TLS 1.3
+  uniquement] is too new for some important clients, like Hue Sync for
+  PC"*. Autrement dit, la bonne direction est une **compatibilité plus
+  large**, pas la restriction à une seule suite `ECDHE-ECDSA-AES128-GCM-SHA256`
+  + TLS 1.2 maximum copiée de diyHue en 0.3.5 (confirmée par l'utilisateur
+  comme n'ayant rien changé). On repasse donc sur la suite de chiffrement
+  TLS 1.2 par défaut de Python (déjà proche du profil "intermediate" de
+  Mozilla) avec TLS 1.2 comme *minimum* (plus de plafond à 1.2), et on
+  ajoute la négociation **ALPN** (`http/1.1`) — absente jusqu'ici — dont
+  certains clients exigent la présence pour aboutir la poignée de main.
+- **Champs manquants ajoutés à `/api/{user}/config`** (authentifié) :
+  `analyticsconsent`, `portalconnection`, `proxyaddress`, `proxyport` —
+  présents dans la structure `ApiConfig` de Bifrost
+  (`crates/hue/src/legacy_api.rs`) mais absents de notre réponse ; un client
+  qui valide la forme complète de la configuration avant de poursuivre le
+  pairing pouvait s'arrêter là silencieusement.
+
+Voir `NOTICE` pour l'attribution : ces correctifs suivent le design de
+Bifrost (comportement observé/documenté dans son code source), aucun code
+n'en a été copié — l'implémentation reste aiohttp/Python, indépendante de
+son architecture axum/tokio en Rust.
+
 ## 0.5.1
 
 - **Correction d'un vrai bug** : plusieurs réponses d'erreur v1 ("resource

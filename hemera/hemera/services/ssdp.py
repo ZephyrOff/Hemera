@@ -32,23 +32,28 @@ def _targets(mac: str) -> list[tuple[str, str]]:
     ]
 
 
-def _headers(method_line: str, host_ip: str, port: int, bridge_id: str) -> str:
+def _headers(method_line: str, host_ip: str, port: int, bridge_id: str, apiversion: str) -> str:
     return (
         f"{method_line}\r\n"
         f"HOST: {_SSDP_ADDR}:{_SSDP_PORT}\r\n"
         "CACHE-CONTROL: max-age=100\r\n"
         f"LOCATION: http://{host_ip}:{port}/description.xml\r\n"
-        "SERVER: Linux/3.14.0 UPnP/1.0 IpBridge/1.20.0\r\n"
+        # Matches Bifrost's server/ssdp.rs exactly (its own comment: "Hue
+        # Essentials strikes again: server name must look like this") —
+        # diyHue's "Linux/3.14.0 UPnP/1.0 IpBridge/1.20.0" is a different,
+        # older convention.
+        f"SERVER: Hue/1.0 UPnP/1.0 IpBridge/{apiversion}\r\n"
         f"hue-bridgeid: {bridge_id.upper()}\r\n"
     )
 
 
 class _SearchResponder(asyncio.DatagramProtocol):
-    def __init__(self, host_ip: str, port: int, mac: str, bridge_id: str) -> None:
+    def __init__(self, host_ip: str, port: int, mac: str, bridge_id: str, apiversion: str) -> None:
         self.host_ip = host_ip
         self.port = port
         self.mac = mac
         self.bridge_id = bridge_id
+        self.apiversion = apiversion
         self.transport: asyncio.DatagramTransport | None = None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -68,16 +73,18 @@ class _SearchResponder(asyncio.DatagramProtocol):
         if self.transport is None:
             return
         logging.debug("Responding to SSDP M-SEARCH from %s", addr[0])
-        header = _headers("HTTP/1.1 200 OK", self.host_ip, self.port, self.bridge_id) + "EXT:\r\n"
+        header = _headers("HTTP/1.1 200 OK", self.host_ip, self.port, self.bridge_id, self.apiversion) + "EXT:\r\n"
         for st, usn in _targets(self.mac):
             msg = f"{header}ST: {st}\r\nUSN: {usn}\r\n\r\n"
             self.transport.sendto(msg.encode("utf-8"), addr)
 
 
-async def _notify_forever(host_ip: str, port: int, mac: str, bridge_id: str, stop: asyncio.Event) -> None:
+async def _notify_forever(
+    host_ip: str, port: int, mac: str, bridge_id: str, apiversion: str, stop: asyncio.Event
+) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack("b", 1))
-    header = _headers("NOTIFY * HTTP/1.1", host_ip, port, bridge_id) + "NTS: ssdp:alive\r\n"
+    header = _headers("NOTIFY * HTTP/1.1", host_ip, port, bridge_id, apiversion) + "NTS: ssdp:alive\r\n"
     try:
         while not stop.is_set():
             for nt, usn in _targets(mac):
@@ -95,11 +102,12 @@ async def _notify_forever(host_ip: str, port: int, mac: str, bridge_id: str, sto
 
 
 class SsdpService:
-    def __init__(self, host_ip: str, port: int, mac: str, bridge_id: str) -> None:
+    def __init__(self, host_ip: str, port: int, mac: str, bridge_id: str, apiversion: str) -> None:
         self.host_ip = host_ip
         self.port = port
         self.mac = mac
         self.bridge_id = bridge_id
+        self.apiversion = apiversion
         self._transport: asyncio.DatagramTransport | None = None
         self._notify_task: asyncio.Task | None = None
         self._stop = asyncio.Event()
@@ -114,10 +122,11 @@ class SsdpService:
 
         loop = asyncio.get_running_loop()
         self._transport, _ = await loop.create_datagram_endpoint(
-            lambda: _SearchResponder(self.host_ip, self.port, self.mac, self.bridge_id), sock=sock
+            lambda: _SearchResponder(self.host_ip, self.port, self.mac, self.bridge_id, self.apiversion), sock=sock
         )
         self._notify_task = asyncio.create_task(
-            _notify_forever(self.host_ip, self.port, self.mac, self.bridge_id, self._stop), name="ssdp-notify"
+            _notify_forever(self.host_ip, self.port, self.mac, self.bridge_id, self.apiversion, self._stop),
+            name="ssdp-notify",
         )
         logging.info("SSDP: listening for M-SEARCH and announcing on %s:%d", _SSDP_ADDR, _SSDP_PORT)
 

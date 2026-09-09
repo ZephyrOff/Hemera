@@ -139,30 +139,40 @@ async def async_main() -> None:
     await v2_runner.setup()
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(cert_path)  # key + cert concatenated by ensure_certificate()
-    # Match diyHue's HueEmulator3.py exactly (proven to pair with the real Hue
-    # app): Python's default cipher list is broader/more modern than whatever
-    # limited set the Hue app's embedded TLS client actually offers for local
-    # bridge connections — with no overlap the handshake fails silently,
-    # before any HTTP request is sent, indistinguishable from the client
-    # never having tried at all.
-    ssl_context.options |= ssl.OP_CIPHER_SERVER_PREFERENCE
-    ssl_context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256")
-    ssl_context.set_ecdh_curve("prime256v1")
-    # set_ciphers() only constrains the TLS <=1.2 negotiation — TLS 1.3 has
-    # its own separate ciphersuite list and would otherwise ignore this
-    # restriction entirely. Capping the version keeps the negotiated
-    # handshake actually confined to the cipher above.
-    ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
+    # Matches Bifrost's server/http.rs (proven to pair with the real Hue app):
+    # it explicitly builds an OpenSSL `mozilla_intermediate_v5`-equivalent
+    # profile rather than the newer `mozilla_modern_v5` default, with the
+    # comment "That protocol version [TLS 1.3-only] is too new for some
+    # important clients, like Hue Sync for PC" — i.e. the fix is BROADER
+    # compatibility, not the narrower single-cipher/TLS-1.2-only restriction
+    # this add-on used previously (copied from diyHue, and confirmed by the
+    # user not to fix pairing). Python's own default TLS 1.2 cipher list
+    # already matches Mozilla "intermediate" closely enough; only the
+    # minimum version and ALPN need to be set explicitly.
+    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+    # Bifrost's ALPN callback offers "h2" and "http/1.1" — but unlike its Rust
+    # hyper-based server, aiohttp only ever speaks HTTP/1.1 on the wire, so
+    # advertising "h2" here would let a client negotiate a protocol we can't
+    # actually serve. Offering only http/1.1 still satisfies clients that
+    # refuse to complete the handshake without ALPN participation at all.
+    ssl_context.set_alpn_protocols(["http/1.1"])
     v2_site = web.TCPSite(v2_runner, settings.bind_ip, settings.https_port, ssl_context=ssl_context)
     await v2_site.start()
     logging.info("Hue v2/CLIP API listening on %s:%d (https)", settings.bind_ip, settings.https_port)
 
     eventstream_trim_task = asyncio.create_task(trim_eventstream_forever(stop_event), name="eventstream-trim")
 
-    mdns = MdnsAdvertiser(settings.bridge_id, settings.host_ip, settings.http_port)
+    # Port 443, not 80: matches Bifrost's server/mdns.rs (proven to work with
+    # the real Hue app) — mDNS specifically advertises the HTTPS port, unlike
+    # SSDP/UPnP which stays on 80 (see SsdpService below and Bifrost's own
+    # server/ssdp.rs, which hardcodes port 80 there).
+    mdns = MdnsAdvertiser(settings.bridge_id, settings.host_ip, settings.https_port)
     await mdns.start()
 
-    ssdp = SsdpService(settings.host_ip, settings.http_port, settings.mac, settings.bridge_id)
+    ssdp = SsdpService(
+        settings.host_ip, settings.http_port, settings.mac, settings.bridge_id,
+        cfg.yaml_config["config"]["apiversion"],
+    )
     await ssdp.start()
 
     try:
