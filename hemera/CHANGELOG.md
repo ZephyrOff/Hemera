@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Correction du format du champ `webui` (`[PORT:8099]` au lieu de `8099`),
+  invalide selon le schéma du Supervisor — cette erreur faisait disparaître
+  l'add-on entier de la boutique, silencieusement (log de niveau debug
+  seulement pour un dépôt personnalisé hors canal dev).
+
 ## 0.3.0
 
 - **Panel d'administration** (port 8099, lien "Web UI" de l'add-on) :

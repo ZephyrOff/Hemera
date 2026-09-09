@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.3.0"
+version: "0.3.1"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -17,7 +17,7 @@ init: false
 # reason. Our own HTTP(S)/DTLS ports are bound directly on the host as
 # configured below; the "ports" section is informational under host_network.
 host_network: true
-webui: "http://[HOST]:8099/"
+webui: "http://[HOST]:[PORT:8099]/"
 ports:
   80/tcp: 80
   443/tcp: 443
