@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.13.0
+
+- **Dégradé simulé pour les bandeaux non reconnus comme Gradient par
+  Zigbee2MQTT** : deux nouveaux modèles dans le sélecteur de la vue
+  Lumières, `HUE_UNSUPPORTED_GRADIENT` et `AQARA_GRADIENT`. Présentés à
+  l'application Hue exactement comme un vrai bandeau Gradient (même
+  gabarit que `LCX004` — capacités, points de dégradé réglables, zone
+  Entertainment), mais le pont adapte la commande MQTT réellement envoyée
+  selon le modèle choisi :
+  - `HUE_UNSUPPORTED_GRADIENT` : identique au format déjà utilisé pour un
+    vrai bandeau Hue (`{"gradient": ["#rrggbb", ...]}`) — pour un bandeau
+    dont Zigbee2MQTT ne détecte pas nativement la fonction gradient, mais
+    qui répond quand même à ce champ.
+  - `AQARA_GRADIENT` : nouveau format `{"segment_colors": [{"segment": 1,
+    "color": {"r":,"g":,"b":}}, ...]}` (numérotation à partir de 1, une
+    couleur RVB par segment) — celui qu'attend le firmware Aqara (LED
+    Strip T1 et similaires), qui n'a pas de champ `gradient` du tout.
+  - Porté depuis `alex_light_studio` (l'intégration Home Assistant
+    développée en parallèle contre le même matériel réel) — voir
+    `NOTICE`. Le nombre de points de dégradé reste réglable dans le panel
+    (Lumières → Points de dégradé) comme pour tout modèle Gradient,
+    puisque Zigbee2MQTT ne peut évidemment rien rapporter de fiable sur un
+    appareil qu'il ne reconnaît pas comme tel.
+  - Testé de bout en bout : bascule de modèle depuis le panel, envoi d'un
+    dégradé depuis l'API v2 (donc depuis l'app Hue en conditions réelles),
+    vérification du message MQTT réellement publié pour les deux formats.
+
 ## 0.12.0
 
 - **Marges entre les blocs du panel corrigées** : "Lumières découvertes" et

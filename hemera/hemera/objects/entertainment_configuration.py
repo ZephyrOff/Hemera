@@ -26,7 +26,10 @@ _GRADIENT_STRIP_POSITIONS = [
     {"x": 0.4, "y": 0.8, "z": 0.4}, {"x": 0.4, "y": 0.8, "z": 0.0},
     {"x": 0.4, "y": 0.8, "z": -0.4},
 ]
-_GRADIENT_MODELIDS = ("LCX001", "LCX002", "LCX003", "LCX004", "LCX006", "915005987201")
+_GRADIENT_MODELIDS = (
+    "LCX001", "LCX002", "LCX003", "LCX004", "LCX006", "915005987201",
+    "HUE_UNSUPPORTED_GRADIENT", "AQARA_GRADIENT",
+)
 
 
 class EntertainmentConfiguration:

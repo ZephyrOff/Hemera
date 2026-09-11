@@ -40,9 +40,27 @@ def set_light(light, data: dict) -> None:
                 payload["color"] = {"x": value[0], "y": value[1]}
             elif key == "gradient":
                 rgbs = [convert_xy(p["color"]["xy"]["x"], p["color"]["xy"]["y"], 255) for p in value["points"]]
-                hexes = ["#" + "".join(f"{int(round(c)):02x}" for c in rgb) for rgb in rgbs]
-                hexes.reverse()
-                payload["gradient"] = hexes
+                if light.modelid == "AQARA_GRADIENT":
+                    # Aqara's LED Strip T1 (and similar) has no native "gradient"
+                    # Z2M feature at all — it's not a real Hue gradient product,
+                    # just presented as one so the app offers the same UI. The
+                    # underlying Zigbee cluster command instead needs one
+                    # 1-indexed {"segment", "color": {r,g,b}} entry per LED
+                    # segment (ported from the alex_light_studio HA integration,
+                    # which drives the same real hardware this way — no
+                    # left/right reversal there, unlike the Hue array below,
+                    # since segment indices already match physical order).
+                    payload["segment_colors"] = [
+                        {"segment": i + 1, "color": {"r": r, "g": g, "b": b}}
+                        for i, (r, g, b) in enumerate(rgbs)
+                    ]
+                else:
+                    # Real Hue Gradient Lightstrips, and non-Hue strips faked as
+                    # one (e.g. "HUE_UNSUPPORTED_GRADIENT") that Z2M still
+                    # exposes via the same flat-hex-array "gradient" property.
+                    hexes = ["#" + "".join(f"{int(round(c)):02x}" for c in rgb) for rgb in rgbs]
+                    hexes.reverse()
+                    payload["gradient"] = hexes
             elif key == "ct":
                 payload["color_temp"] = value
             elif key in ("hue", "sat"):

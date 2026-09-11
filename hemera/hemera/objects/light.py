@@ -30,7 +30,10 @@ from hemera.objects import (
 logging = get_logger(__name__)
 
 # Modelids whose Z2M "gradient" capability we present as a segmented Hue gradient light.
-_GRADIENT_MODELIDS = ("LCX002", "LCX004", "915005987201", "LCX006")
+_GRADIENT_MODELIDS = (
+    "LCX002", "LCX004", "915005987201", "LCX006",
+    "HUE_UNSUPPORTED_GRADIENT", "AQARA_GRADIENT",
+)
 
 
 class Light:
@@ -360,7 +363,7 @@ class Light:
                 {"length": 4, "start": 8}, {"length": 4, "start": 12}, {"length": 2, "start": 16},
                 {"length": 2, "start": 18},
             ]
-        elif self.modelid in ("915005987201", "LCX004", "LCX006"):
+        elif self.modelid in ("915005987201", "LCX004", "LCX006", "HUE_UNSUPPORTED_GRADIENT", "AQARA_GRADIENT"):
             # Fixed at 10 (not self.protocol_cfg["points_capable"], a
             # different, unrelated number — see get_v2_api()'s `gradient`
             # service): matches diyHue's HueObjects/Light.py exactly. This is

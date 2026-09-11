@@ -95,6 +95,14 @@ Organisé en cinq vues, via le menu à gauche :
   Zigbee2MQTT annonce lui-même pour l'appareil, en forcer un autre plus
   élevé que ce que le bandeau accepte réellement au niveau Zigbee n'aura
   cependant aucun effet visible (Z2M tronque les couleurs en trop).
+  - **Dégradé simulé** (`HUE_UNSUPPORTED_GRADIENT`, `AQARA_GRADIENT`) : pour
+    un bandeau LED que Zigbee2MQTT n'expose pas nativement comme "gradient"
+    mais qui peut quand même être piloté segment par segment via MQTT.
+    Présenté à l'app exactement comme un vrai bandeau Gradient ; le pont
+    envoie ensuite le format de commande réel attendu par l'appareil
+    (tableau de couleurs hexadécimales pour un bandeau Hue non reconnu,
+    `segment_colors` — une couleur RVB par segment numéroté à partir de 1 —
+    pour un bandeau Aqara).
 - **Pièces** : création avec sélection directe des lumières à y inclure
   (champ de recherche si la liste est longue). Une pièce déjà créée peut
   aussi recevoir plusieurs lumières d'un coup (sélection multiple avec

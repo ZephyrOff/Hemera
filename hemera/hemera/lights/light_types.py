@@ -252,6 +252,68 @@ lightTypes: dict[str, dict] = {
                     "startup": {"mode": "safety", "configured": False}},
         "dynamics": {"speed": 0, "speed_valid": False, "status": "none", "status_values": ["none", "dynamic_palette"]},
     },
+    # -- Simulated gradient models -------------------------------------------
+    # These two don't correspond to a real Philips SKU at all: they exist for
+    # strips Zigbee2MQTT does NOT expose a native "gradient" feature for, but
+    # that can still be driven into a segment-by-segment gradient effect via
+    # a specific outgoing MQTT payload shape — ported from the alex_light_studio
+    # Home Assistant integration (developed in parallel against the same real
+    # hardware). Presented to the Hue app with the exact same v1_static/
+    # capabilities/state shape as LCX004 (a real gradient lightstrip) so it
+    # offers the same gradient UI — the app has no way to know, or need to
+    # know, that the underlying device isn't an official Hue product. The
+    # *outgoing* MQTT command shape differs per model — see
+    # hemera.lights.protocols.mqtt.set_light's "gradient" branch.
+    "HUE_UNSUPPORTED_GRADIENT": {
+        "v1_static": {
+            "type": "Extended color light", "manufacturername": "Signify Netherlands B.V.",
+            "productname": "Hue gradient lightstrip", "swversion": "1.94.2", "swconfigid": "DC0A18AF",
+            "productid": "4422-9482-0441_HG01_PSU03",
+            "swupdate": {"state": "noupdates", "lastinstall": "2022-01-13T22:54:51"},
+            "capabilities": {
+                "certified": True,
+                "control": {"mindimlevel": 100, "maxlumen": 1600, "colorgamuttype": "C",
+                            "colorgamut": [[0.6915, 0.3083], [0.1700, 0.7000], [0.1532, 0.0475]],
+                            "ct": {"min": 153, "max": 500}},
+                "streaming": {"renderer": True, "proxy": True},
+            },
+        },
+        "device": {"certified": True, "hardware_platform_type": "100b-118",
+                    "manufacturer_name": "Signify Netherlands B.V.", "model_id": "HUE_UNSUPPORTED_GRADIENT",
+                    "product_archetype": "hue_lightstrip", "product_name": "Hue gradient lightstrip",
+                    "software_version": "1.94.2"},
+        "state": {"on": False, "bri": 254, "hue": 8417, "sat": 140, "effect": "none", "xy": [0.0, 0.0],
+                   "ct": 366, "alert": "select", "colormode": "ct", "mode": "homeautomation",
+                   "reachable": True, "gradient": {"points": []}},
+        "config": {"archetype": "huelightstrip", "function": "mixed", "direction": "omnidirectional",
+                    "startup": {"mode": "safety", "configured": False}},
+        "dynamics": {"speed": 0, "speed_valid": False, "status": "none", "status_values": ["none", "dynamic_palette"]},
+    },
+    "AQARA_GRADIENT": {
+        "v1_static": {
+            "type": "Extended color light", "manufacturername": "Signify Netherlands B.V.",
+            "productname": "Hue gradient lightstrip", "swversion": "1.94.2", "swconfigid": "DC0A18AF",
+            "productid": "4422-9482-0441_HG01_PSU03",
+            "swupdate": {"state": "noupdates", "lastinstall": "2022-01-13T22:54:51"},
+            "capabilities": {
+                "certified": True,
+                "control": {"mindimlevel": 100, "maxlumen": 1600, "colorgamuttype": "C",
+                            "colorgamut": [[0.6915, 0.3083], [0.1700, 0.7000], [0.1532, 0.0475]],
+                            "ct": {"min": 153, "max": 500}},
+                "streaming": {"renderer": True, "proxy": True},
+            },
+        },
+        "device": {"certified": True, "hardware_platform_type": "100b-118",
+                    "manufacturer_name": "Signify Netherlands B.V.", "model_id": "AQARA_GRADIENT",
+                    "product_archetype": "hue_lightstrip", "product_name": "Hue gradient lightstrip",
+                    "software_version": "1.94.2"},
+        "state": {"on": False, "bri": 254, "hue": 8417, "sat": 140, "effect": "none", "xy": [0.0, 0.0],
+                   "ct": 366, "alert": "select", "colormode": "ct", "mode": "homeautomation",
+                   "reachable": True, "gradient": {"points": []}},
+        "config": {"archetype": "huelightstrip", "function": "mixed", "direction": "omnidirectional",
+                    "startup": {"mode": "safety", "configured": False}},
+        "dynamics": {"speed": 0, "speed_valid": False, "status": "none", "status_values": ["none", "dynamic_palette"]},
+    },
 }
 
 # Human-readable labels for the admin panel's "change model" picker — the
@@ -270,6 +332,8 @@ MODEL_CHOICES: list[tuple[str, str]] = [
     ("LCX004", "Bandeau Gradient (couleur multi-points)"),
     ("LCX002", "Bandeau Gradient TV/Play (3 zones)"),
     ("915005987201", "Lampadaire Signe Gradient"),
+    ("HUE_UNSUPPORTED_GRADIENT", "Bandeau Hue non reconnu comme Gradient par Z2M (dégradé simulé)"),
+    ("AQARA_GRADIENT", "Bandeau Aqara (dégradé simulé via segment_colors)"),
 ]
 
 # v1 "archetype" -> v2 "archetype" (dashes/case normalisation Hue uses between APIs).
