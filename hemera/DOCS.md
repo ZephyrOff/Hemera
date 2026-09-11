@@ -86,11 +86,12 @@ Organisé en cinq vues, via le menu à gauche :
   directe à une ou plusieurs pièces (bouton « + pièce » sur chaque ligne,
   × sur chaque étiquette pour en retirer une) — et, plus bas, les appareils
   exclus du pont (réinclusion immédiate via "Réinclure"). Le **modèle**
-  présenté à l'application Hue (couleur+température, couleur seule,
-  température seule, intensité seule, prise on/off, bandeau Gradient) est
-  modifiable via un menu déroulant, utile quand l'auto-détection depuis les
-  capacités Zigbee2MQTT s'est trompée. Pour un bandeau Gradient, le nombre
-  de points de couleur est aussi réglable — par défaut c'est celui que
+  présenté à l'application Hue (identifiant Hue réel, ex. `LCT015`,
+  `LCX004`...) est modifiable via un menu déroulant, utile quand
+  l'auto-détection depuis les capacités Zigbee2MQTT s'est trompée — le
+  bouton « Liste des modèles » en haut de la vue détaille ce que chacun
+  représente. Pour un bandeau Gradient, le nombre de points de couleur est
+  aussi réglable — par défaut c'est celui que
   Zigbee2MQTT annonce lui-même pour l'appareil, en forcer un autre plus
   élevé que ce que le bandeau accepte réellement au niveau Zigbee n'aura
   cependant aucun effet visible (Z2M tronque les couleurs en trop).

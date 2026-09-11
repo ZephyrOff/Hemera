@@ -7,6 +7,7 @@ no dependency on any specific light protocol.
 
 from __future__ import annotations
 
+import itertools
 import random
 import uuid
 
@@ -15,12 +16,26 @@ from hemera.logging_setup import get_logger
 logging = get_logger(__name__)
 
 # Backing list for the CLIP v2 Server-Sent-Events stream (GET /eventstream/clip/v2).
-# Consumed and cleared by hemera.api.v1.eventstream's broker loop.
-eventstream: list[dict] = []
+# Each entry is (seq, message): `seq` is a global, monotonically increasing
+# sequence number (never reused, independent of any one connection) used as
+# the SSE frame's `id:` field — required for hemera.api.v2.eventstream to
+# support the standard SSE auto-reconnect protocol (the client's next
+# connection sends back a `Last-Event-ID` header with the highest `id:` it
+# saw, and expects everything published since to be replayed). Without a
+# stable, connection-independent id, a client whose connection drops for any
+# reason (mobile OS suspending background network access, a Wi-Fi hiccup...)
+# has no way to ask "what did I miss" and just silently misses every state
+# change from other sources (Zigbee2MQTT, automations...) until it happens
+# to make a fresh GET again (e.g. a full app relaunch) — this is what
+# real-world testing showed after the eventstream push itself was added,
+# and matches Bifrost's own routes/eventstream.rs design (proven against the
+# real Hue app), which does exactly this replay via `events_sent_after_id`.
+eventstream: list[tuple[int, dict]] = []
+_next_seq = itertools.count(1)
 
 
 def stream_event(message: dict) -> None:
-    eventstream.append(message)
+    eventstream.append((next(_next_seq), message))
 
 
 def v1_state_to_v2(v1_state: dict) -> dict:

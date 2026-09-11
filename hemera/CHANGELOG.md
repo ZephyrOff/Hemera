@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.11.0
+
+- **Deuxième bug réel trouvé sur la remontée d'état en direct** (suite de la
+  0.10.0) : même avec la notification à chaque changement, l'application
+  Hue ne voyait toujours pas les changements externes (Zigbee2MQTT,
+  automatisation...) sans redémarrage complet — seul le statut au moment de
+  l'ouverture de l'app était correct. Cause trouvée en comparant avec
+  Bifrost (`routes/eventstream.rs`) : le flux SSE ne gérait pas la
+  reconnexion standard (en-tête `Last-Event-ID`). Chaque connexion perdue
+  (l'app en arrière-plan sur mobile suspend son réseau — un cas très
+  fréquent, pas une exception) puis rétablie repartait "en direct à partir
+  de maintenant", sans aucun moyen pour l'app de demander "qu'ai-je
+  manqué ?" — tout changement survenu pendant la coupure était perdu
+  définitivement, silencieusement, jusqu'au prochain `GET` complet (un
+  vrai relancement de l'app). Corrigé dans `objects/__init__.py` (chaque
+  évènement a maintenant un numéro de séquence global stable, indépendant
+  de toute connexion) et `api/v2/eventstream.py` (une reconnexion avec
+  `Last-Event-ID` rejoue tout ce qui a été manqué) — comportement standard
+  du protocole SSE, que Bifrost implémente pour la même raison. Testé en
+  conditions simulées : connexion coupée, changement d'état publié
+  pendant la coupure, reconnexion avec le dernier ID connu — les
+  évènements manqués sont bien rejoués.
+- **Modèles : noms réels affichés, description déplacée dans une fenêtre
+  dédiée**. Le sélecteur de modèle sur chaque lumière affiche maintenant
+  le vrai identifiant Hue (`LCT015`, `LCX004`...) plutôt qu'un libellé
+  français inventé. Un bouton « Liste des modèles » en haut de la vue
+  Lumières ouvre une fenêtre récapitulant chaque modèle avec sa
+  description.
+- **Panel visuellement retravaillé** : palette et ombres plus soignées,
+  icônes dans le menu de gauche, badge de marque, transitions plus douces
+  sur les boutons/cartes/lignes de tableau — toujours sans dépendance
+  externe (aucune police ni bibliothèque d'icônes chargée depuis
+  Internet, cohérent avec le fonctionnement hors-ligne de l'add-on).
+
 ## 0.10.0
 
 - **Vrai bug trouvé et corrigé : l'application Hue ne reflétait pas l'état

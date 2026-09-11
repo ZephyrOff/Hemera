@@ -7,6 +7,18 @@ connected client re-reading from index 0 on every tick — the original
 approach could deliver the same message twice to one client. A background
 task caps the list's size so it cannot grow unboundedly when no client is
 connected to drain it.
+
+Supports the standard SSE auto-reconnect protocol (``Last-Event-ID``
+request header, matching Bifrost's routes/eventstream.rs, proven against
+the real Hue app) — added after real-world testing showed that without it,
+a light's state change made from outside the app (Zigbee2MQTT, an
+automation, a physical switch) never reached the app until it was fully
+relaunched. The eventstream push itself (see mqtt_client.py) was necessary
+but not sufficient: whenever the app's connection dropped for any reason —
+a mobile OS suspending background network access being the big one — its
+automatic reconnect carried no way to ask "what did I miss", so every event
+published during the gap was silently lost forever, indistinguishable from
+the push never having happened at all.
 """
 
 from __future__ import annotations
@@ -38,6 +50,10 @@ async def trim_eventstream_forever(stop: asyncio.Event) -> None:
             del eventstream[: len(eventstream) - _MAX_BACKLOG]
 
 
+def _latest_seq() -> int:
+    return eventstream[-1][0] if eventstream else 0
+
+
 async def stream_v2_events(request: web.Request) -> web.StreamResponse:
     response = web.StreamResponse(
         status=200,
@@ -46,21 +62,34 @@ async def stream_v2_events(request: web.Request) -> web.StreamResponse:
     await response.prepare(request)
     await response.write(b": hi\n\n")
 
-    cursor = len(eventstream)  # live updates only, matching the real bridge — no backlog replay
-    counter = 0
+    last_event_id = request.headers.get("Last-Event-ID")
+    if last_event_id is not None:
+        try:
+            cursor_seq = int(last_event_id)
+        except ValueError:
+            cursor_seq = _latest_seq()
+    else:
+        # First-ever connection from this client — nothing to catch up on,
+        # start live-only (matches the real bridge: no reason to dump
+        # unrelated history to someone who's never connected before).
+        cursor_seq = _latest_seq()
+
     last_activity = time.monotonic()
     try:
         while True:
-            current_len = len(eventstream)
-            if current_len < cursor:
-                cursor = 0  # list was trimmed/cleared underneath us — resync
-            if current_len > cursor:
-                new_messages = eventstream[cursor:current_len]
-                cursor = current_len
-                for message in new_messages:
-                    chunk = f"id: {counter}\ndata: {json.dumps([message], separators=(',', ':'))}\n\n"
+            # A plain seq > cursor_seq filter over whatever's currently in
+            # the list (rather than tracking a list *index*) stays correct
+            # even if trim_eventstream_forever has removed older entries out
+            # from under this connection — and it's what makes the
+            # Last-Event-ID case above just work: it's the exact same
+            # "resume from here" logic, whether resuming from a fresh
+            # reconnect or from the last tick.
+            pending = [(seq, message) for seq, message in eventstream if seq > cursor_seq]
+            if pending:
+                for seq, message in pending:
+                    chunk = f"id: {seq}\ndata: {json.dumps([message], separators=(',', ':'))}\n\n"
                     await response.write(chunk.encode("utf-8"))
-                    counter += 1
+                    cursor_seq = seq
                 last_activity = time.monotonic()
             elif time.monotonic() - last_activity >= _HEARTBEAT_INTERVAL_S:
                 await response.write(b": hue-bridge-heartbeat\n\n")
