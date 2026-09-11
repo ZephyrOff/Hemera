@@ -102,7 +102,12 @@ Organisé en cinq vues, via le menu à gauche :
     envoie ensuite le format de commande réel attendu par l'appareil
     (tableau de couleurs hexadécimales pour un bandeau Hue non reconnu,
     `segment_colors` — une couleur RVB par segment numéroté à partir de 1 —
-    pour un bandeau Aqara).
+    pour un bandeau Aqara). Pour `AQARA_GRADIENT`, le nombre de points de
+    dégradé se met à jour automatiquement à partir de la longueur réelle
+    configurée dans Zigbee2MQTT pour cet appareil (5 segments par mètre) —
+    y compris si une valeur différente avait été réglée manuellement dans
+    le panel — pour éviter qu'un dégradé publié pour moins de segments que
+    le bandeau n'en a réellement laisse une partie de celui-ci inchangée.
 - **Pièces** : création avec sélection directe des lumières à y inclure
   (champ de recherche si la liste est longue). Une pièce déjà créée peut
   aussi recevoir plusieurs lumières d'un coup (sélection multiple avec

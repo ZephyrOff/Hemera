@@ -59,9 +59,11 @@ observed/documented behaviour, no source code copied.
 The `AQARA_GRADIENT`/`HUE_UNSUPPORTED_GRADIENT` simulated-gradient light
 models (hemera/hemera/lights/light_types.py, hemera/hemera/lights/protocols/
 mqtt.py) port the outgoing MQTT payload shapes (Aqara's `segment_colors`,
-Hue's flat `gradient` hex array) from `alex_light_studio`, a Home Assistant
-integration by the same author developed in parallel against the same real
-hardware — not a third-party dependency.
+Hue's flat `gradient` hex array) and the Aqara segment-count-from-length
+derivation (hemera/hemera/services/mqtt_client.py, 5 segments/metre) from
+`alex_light_studio`, a Home Assistant integration by the same author
+developed in parallel against the same real hardware — not a third-party
+dependency.
 
 Neither diyHue, ha-hue-entertainment, hassio-addon, Bifrost, nor their
 authors are affiliated with, or endorse, this project. "Philips Hue" and

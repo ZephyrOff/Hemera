@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.13.1
+
+- **Correctif `AQARA_GRADIENT` : le nombre de points de dégradé peut
+  maintenant se désynchroniser du nombre réel de segments configurés dans
+  Zigbee2MQTT.** Cas réel signalé : un bandeau réglé sur 3 points de
+  dégradé dans le panel, mais avec 5 segments effectivement configurés
+  côté Z2M (suite à un test manuel antérieur) — n'allumait que le début du
+  bandeau, puisqu'on ne publiait de couleur que pour 3 segments sur 5.
+  Corrigé : la longueur réelle du bandeau (`length`, en mètres) est un
+  réglage propre à chaque appareil Aqara que Zigbee2MQTT republie en
+  direct — le nombre réel de segments s'en déduit (`longueur × 5`, densité
+  fixe des bandeaux Aqara LED Strip T1). Le pont recalcule maintenant le
+  nombre de points de dégradé à partir de cette valeur à chaque message
+  d'état reçu pour un appareil `AQARA_GRADIENT`, et corrige silencieusement
+  toute valeur déjà enregistrée si elle ne correspond plus — y compris une
+  valeur définie manuellement dans le panel, contrairement au réglage
+  équivalent pour un vrai bandeau Hue (où une valeur manuelle reste
+  volontairement prioritaire, parce qu'elle représente un choix informé
+  face à une capacité que Z2M ne fait que deviner ; ici `length` est la
+  configuration réelle de l'appareil, pas une estimation, donc rien ne
+  justifie qu'un réglage resté périmé dans le panel continue à primer sur
+  elle). Le champ manuel du panel reste disponible en repli pour les
+  versions/convertisseurs Zigbee2MQTT qui ne republient pas `length`.
+
 ## 0.13.0
 
 - **Dégradé simulé pour les bandeaux non reconnus comme Gradient par

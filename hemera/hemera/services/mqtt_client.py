@@ -38,6 +38,18 @@ _RECONNECT_INTERVAL_S = 5.0
 # its own `length_max` (see _pick_gradient_length_max below).
 _DEFAULT_GRADIENT_POINTS = 7
 
+# Aqara's LED Strip T1 (and similar) has a fixed LED density of 5 controllable
+# segments per metre of strip — reverse-engineered from alex_light_studio
+# (same author, same real hardware): `round(length_in_metres * 5)`, where
+# `length` is Z2M's own live, user-editable device setting (HA's MQTT
+# discovery names the resulting entity `number.<x>_length`).
+_AQARA_SEGMENTS_PER_METER = 5
+# Matches the admin panel's own points_capable validation range (see
+# api/admin/routes.py's h_set_gradient_points) — keeps an implausible or
+# corrupt `length` value from setting something the rest of the code wasn't
+# built to expect.
+_MAX_GRADIENT_POINTS = 32
+
 
 def _pick_modelid(exposes: list[dict]) -> str | None:
     """Best-effort mapping from a Z2M device's `exposes` to a Hue modelid template.
@@ -299,6 +311,8 @@ class MqttClient:
             state["colormode"] = "xy"
         light.state.update(state)
 
+        self._sync_aqara_segment_count(light, data)
+
         # Without this, a state change coming from Z2M (a physical switch, an
         # automation, another controller) never reaches the Hue app: it only
         # ever learns about light state through the v2 CLIP eventstream (SSE)
@@ -313,3 +327,43 @@ class MqttClient:
         if v2_state:
             logging.info("MQTT state change for %s -> pushing eventstream update: %s", friendly_name, v2_state)
             light.genStreamEvent(v2_state)
+
+    def _sync_aqara_segment_count(self, light, data: dict) -> None:
+        """Keep an AQARA_GRADIENT light's points_capable in sync with the
+        strip's actual configured length in Z2M.
+
+        Found from a real report: a strip set up in the admin panel with 3
+        gradient points, but with 5 segments actually configured in Z2M
+        (e.g. from an earlier manual test) only lit its first 3 physical
+        segments on a gradient command — we published colors for 3 segments
+        while the device has 5, so the extra 2 simply kept whatever they
+        last displayed. `length` (metres) is Z2M's own live, user-editable
+        setting for this device family (see the module-level comment on
+        _AQARA_SEGMENTS_PER_METER for how the real segment count is
+        derived from it).
+
+        Deliberately does NOT respect points_capable_manual the way the Hue
+        gradient length_max sync does: that flag exists because a *real* Hue
+        bridge's own length_max is only ever a capability guess an admin
+        might legitimately know better than, whereas Z2M's `length` here is
+        the actual, current, ground-truth segment count for this specific
+        device — it's exactly the value that was wrong in the reported case
+        (a stale manual "3" while Z2M had genuinely been reconfigured to 5),
+        so a manual override could never fix, only re-cause, the mismatch.
+        The admin panel's manual field remains the fallback for whatever
+        Z2M version/converter doesn't publish `length` at all.
+        """
+        if light.modelid != "AQARA_GRADIENT" or "length" not in data:
+            return
+        try:
+            segments = round(float(data["length"]) * _AQARA_SEGMENTS_PER_METER)
+        except (TypeError, ValueError):
+            return
+        segments = max(1, min(_MAX_GRADIENT_POINTS, segments))
+        if light.protocol_cfg.get("points_capable") != segments:
+            logging.info(
+                "Aqara segment count for %s changed to %d (Z2M reports length=%sm)",
+                light.name, segments, data["length"],
+            )
+            light.protocol_cfg["points_capable"] = segments
+            self.cfg.mark_dirty("lights")
