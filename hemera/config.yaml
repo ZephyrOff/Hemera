@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.14.0"
+version: "0.15.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -17,6 +17,12 @@ init: false
 # reason. Our own HTTP(S)/DTLS ports are bound directly on the host as
 # configured below; the "ports" section is informational under host_network.
 host_network: true
+# Grants this add-on's own Supervisor token the right to call Home
+# Assistant Core's own REST API (proxied at http://supervisor/core/api) —
+# what the HA connector (admin panel → Configuration → Connecteur HA) uses
+# to pull in light entities from other integrations, with no separate
+# token/URL for the user to create or paste anywhere.
+homeassistant_api: true
 webui: "http://[HOST]:[PORT:8099]/"
 ports:
   80/tcp: 80

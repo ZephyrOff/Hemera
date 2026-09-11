@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.15.0
+
+- **« Points de dégradé » retiré de la vue Lumières** : depuis la 0.14.0,
+  ce nombre se déduit et se corrige tout seul (longueur Zigbee2MQTT réelle
+  pour Aqara, `length_max` pour un vrai bandeau Hue) — un réglage manuel
+  affiché en permanence n'avait plus vraiment d'utilité. Le réglage
+  reste possible via l'API (`POST /api/lights/{id}/gradient_points`) pour
+  les cas où l'auto-détection ne suffirait pas, simplement plus affiché.
+
+- **Nouveau connecteur Home Assistant**, à côté du connecteur MQTT
+  existant : permet d'ajouter au pont des lumières qui viennent d'*autres*
+  intégrations Home Assistant (WLED, Tuya, ESPHome, une autre intégration
+  Hue...) plutôt que de Zigbee2MQTT.
+  - **Aucune configuration requise** sur une installation add-on réelle :
+    `homeassistant_api: true` donne à l'add-on l'accès à l'API de Home
+    Assistant via le Supervisor, avec le jeton déjà fourni automatiquement
+    à chaque add-on — pas d'adresse ni de jeton à saisir. Hors add-on
+    (dev local), `HEMERA_HA_URL`/`HEMERA_HA_TOKEN` prennent le relais.
+  - Découverte par sondage périodique de `GET /api/states` (toutes les 3s)
+    plutôt qu'un abonnement WebSocket en direct — plus simple et plus sûr
+    pour une première version, au prix d'un délai de quelques secondes
+    avant qu'un changement d'état externe atteigne l'app Hue (l'inverse
+    du connecteur MQTT, qui reçoit les changements immédiatement).
+  - Le modèle Hue présenté est déduit des `supported_color_modes` de
+    l'entité (même principe que la détection depuis les `exposes` Z2M).
+  - Nouvelles vues dans **Configuration → Connecteur MQTT / Connecteur
+    HA** : statut de connexion, lumières découvertes et exclusions,
+    séparément pour chaque connecteur. La vue **Lumières** reste la vue
+    d'ensemble (toutes les lumières, tous connecteurs confondus), avec une
+    nouvelle colonne **Connecteur** ; l'exclusion d'une lumière se fait
+    désormais depuis la vue Configuration du connecteur concerné plutôt
+    que depuis Lumières.
+  - Attention aux doublons : si l'intégration Zigbee2MQTT de Home
+    Assistant est elle-même activée, ses lumières apparaissent à la fois
+    comme entités `light.*` (visibles par le connecteur HA) et via MQTT
+    directement (connecteur MQTT) — les exclure d'un des deux connecteurs
+    évite de les voir en double dans l'app Hue.
+  - Bug trouvé et corrigé pendant les tests (avec un faux serveur HA, en
+    l'absence d'une vraie instance Home Assistant sous la main) : contrairement
+    à un message MQTT de Z2M (qui ne contient que les propriétés qui ont
+    réellement changé), chaque sondage de `/api/states` renvoie l'état
+    *complet* de l'entité, changé ou non — sans comparaison avec l'état
+    déjà connu, ça aurait repoussé un évènement identique vers l'app Hue
+    toutes les 3 secondes indéfiniment. Corrigé avant publication.
+
 ## 0.14.0
 
 - **Correctif important sur `AQARA_GRADIENT` : le dégradé ne remplissait

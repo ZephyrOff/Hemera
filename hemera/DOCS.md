@@ -78,23 +78,23 @@ Organisé en cinq vues, via le menu à gauche :
     l'app Hue elle-même peut définir pendant sa propre configuration — les
     deux agissent sur le même réglage, ni l'un ni l'autre ne prend le pas
     durablement sur l'autre.
-  - *Connexion MQTT* : modifier et reconnecter la connexion au broker sans
-    redémarrer. C'est l'unique endroit où la configurer (voir ci-dessus) ;
-    une fois enregistrée, elle survit aux redémarrages.
-- **Lumières** : liste des appareils Zigbee2MQTT détectés, avec leur état
-  actuel (allumé/éteint, luminosité) tel que connu du pont — affectation
-  directe à une ou plusieurs pièces (bouton « + pièce » sur chaque ligne,
-  × sur chaque étiquette pour en retirer une) — et, plus bas, les appareils
-  exclus du pont (réinclusion immédiate via "Réinclure"). Le **modèle**
+  - *Connecteur MQTT* : modifier et reconnecter la connexion au broker sans
+    redémarrer — c'est l'unique endroit où la configurer (voir ci-dessus),
+    et elle survit aux redémarrages une fois enregistrée — ainsi que les
+    lumières découvertes via Zigbee2MQTT et les appareils exclus de ce
+    connecteur (réinclusion immédiate via "Réinclure").
+  - *Connecteur HA* : même chose pour les lumières provenant d'**autres**
+    intégrations Home Assistant (voir plus bas).
+- **Lumières** : vue d'ensemble de toutes les lumières prises en compte par
+  le pont, tous connecteurs confondus (colonne **Connecteur**), avec leur
+  état actuel (allumé/éteint, luminosité) tel que connu du pont —
+  affectation directe à une ou plusieurs pièces (bouton « + pièce » sur
+  chaque ligne, × sur chaque étiquette pour en retirer une). Le **modèle**
   présenté à l'application Hue (identifiant Hue réel, ex. `LCT015`,
   `LCX004`...) est modifiable via un menu déroulant, utile quand
-  l'auto-détection depuis les capacités Zigbee2MQTT s'est trompée — le
-  bouton « Liste des modèles » en haut de la vue détaille ce que chacun
-  représente. Pour un bandeau Gradient, le nombre de points de couleur est
-  aussi réglable — par défaut c'est celui que
-  Zigbee2MQTT annonce lui-même pour l'appareil, en forcer un autre plus
-  élevé que ce que le bandeau accepte réellement au niveau Zigbee n'aura
-  cependant aucun effet visible (Z2M tronque les couleurs en trop).
+  l'auto-détection s'est trompée — le bouton « Liste des modèles » en haut
+  de la vue détaille ce que chacun représente. Exclure une lumière se fait
+  depuis Configuration → le connecteur concerné, pas depuis cette vue.
   - **Dégradé simulé** (`HUE_UNSUPPORTED_GRADIENT`, `AQARA_GRADIENT`) : pour
     un bandeau LED que Zigbee2MQTT n'expose pas nativement comme "gradient"
     mais qui peut quand même être piloté segment par segment via MQTT.
@@ -102,23 +102,40 @@ Organisé en cinq vues, via le menu à gauche :
     envoie ensuite le format de commande réel attendu par l'appareil
     (tableau de couleurs hexadécimales pour un bandeau Hue non reconnu,
     `segment_colors` — une couleur RVB par segment numéroté à partir de 1 —
-    pour un bandeau Aqara). Pour `AQARA_GRADIENT`, le nombre de points de
-    dégradé se met à jour automatiquement à partir de la longueur réelle
-    configurée dans Zigbee2MQTT pour cet appareil (5 segments par mètre) —
-    y compris si une valeur différente avait été réglée manuellement dans
-    le panel. Toujours pour `AQARA_GRADIENT` : contrairement à un vrai
-    bandeau Hue, ce matériel n'a aucun lissage embarqué entre segments, et
-    l'application Hue semble limiter le dégradé à peu de points de couleur
-    quel que soit le nombre réel de segments du bandeau — le pont
-    ré-échantillonne donc automatiquement les couleurs reçues sur
-    l'ensemble des segments réels avant de les envoyer, pour un dégradé
-    continu sur tout le bandeau plutôt que limité à ses premiers segments.
+    pour un bandeau Aqara). Pour `AQARA_GRADIENT`, le nombre réel de
+    segments se déduit automatiquement de la longueur configurée dans
+    Zigbee2MQTT pour cet appareil (5 segments par mètre), et contrairement
+    à un vrai bandeau Hue, ce matériel n'a aucun lissage embarqué entre
+    segments — le pont ré-échantillonne donc automatiquement les couleurs
+    reçues sur l'ensemble des segments réels avant de les envoyer, pour un
+    dégradé continu sur tout le bandeau.
 - **Pièces** : création avec sélection directe des lumières à y inclure
   (champ de recherche si la liste est longue). Une pièce déjà créée peut
   aussi recevoir plusieurs lumières d'un coup (sélection multiple avec
   recherche) ou être supprimée entièrement.
 - **Entertainment** : zones Entertainment détectées (créées depuis l'app Hue
   Sync ou la Sync Box) et leur statut de streaming.
+
+## Connecteur Home Assistant
+
+Permet d'ajouter au pont des lumières qui viennent d'**autres** intégrations
+Home Assistant (WLED, Tuya, ESPHome, une autre intégration Hue...) plutôt
+que de Zigbee2MQTT — utile pour un appareil que Z2M ne backe pas.
+
+Aucune configuration nécessaire sur une installation add-on normale : l'accès
+à l'API de Home Assistant se fait via le Supervisor (`homeassistant_api:
+true`), avec le jeton fourni automatiquement à l'add-on — pas d'adresse ni de
+jeton à saisir quelque part. Le connecteur découvre les entités `light.*`
+par sondage périodique (toutes les 3 secondes) plutôt qu'en direct : un
+changement d'état externe met donc quelques secondes à atteindre
+l'application Hue, contrairement au connecteur MQTT qui le reçoit
+immédiatement.
+
+**Attention aux doublons** : si l'intégration Zigbee2MQTT de Home Assistant
+elle-même est activée, ses lumières apparaissent à la fois comme entités
+`light.*` (visibles par le connecteur HA) et via MQTT directement (connecteur
+MQTT) — les exclure de l'un des deux connecteurs (Configuration → le
+connecteur en question) évite de les voir en double dans l'application Hue.
 
 ## Persistance
 

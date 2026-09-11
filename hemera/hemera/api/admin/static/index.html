@@ -60,6 +60,14 @@
      one view, which had no spacing of their own and rendered stacked flush
      against each other. */
   .view { display: flex; flex-direction: column; gap: 20px; }
+  [data-config-panel] { display: flex; flex-direction: column; gap: 20px; }
+  [data-config-panel][hidden] { display: none; }
+  .config-tab-btn {
+    background: var(--bg-soft); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; box-shadow: none;
+  }
+  .config-tab-btn:hover { background: var(--border); box-shadow: none; }
+  .config-tab-btn.active { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
   .view[hidden] { display: none; } /* .view's own `display: flex` has equal specificity to the
     UA stylesheet's [hidden] rule and would otherwise win by cascade order, silently breaking
     switchView()'s hide/show entirely — every view rendering stacked at once. */
@@ -242,17 +250,63 @@
           <p><button id="bridge-save">Enregistrer</button></p>
         </section>
 
-        <section class="card">
-          <h2>Connexion MQTT <span id="mqtt-dot" class="dot off"></span><span id="mqtt-status" class="status"></span></h2>
-          <div class="row">
-            <div class="field"><label>Hôte</label><input id="mqtt-host"></div>
-            <div class="field" style="max-width:100px"><label>Port</label><input id="mqtt-port" type="number"></div>
-            <div class="field"><label>Utilisateur</label><input id="mqtt-user"></div>
-            <div class="field"><label>Mot de passe</label><input id="mqtt-password" type="password" placeholder="(inchangé)"></div>
-            <div class="field"><label>Base topic</label><input id="mqtt-base-topic"></div>
-          </div>
-          <p><button id="mqtt-save">Enregistrer et reconnecter</button></p>
-        </section>
+        <div class="row" style="gap:8px">
+          <button type="button" class="config-tab-btn active" data-config-tab="mqtt">Connecteur MQTT</button>
+          <button type="button" class="config-tab-btn" data-config-tab="ha">Connecteur HA</button>
+        </div>
+
+        <div data-config-panel="mqtt">
+          <section class="card">
+            <h2>Connexion MQTT <span id="mqtt-dot" class="dot off"></span><span id="mqtt-status" class="status"></span></h2>
+            <div class="row">
+              <div class="field"><label>Hôte</label><input id="mqtt-host"></div>
+              <div class="field" style="max-width:100px"><label>Port</label><input id="mqtt-port" type="number"></div>
+              <div class="field"><label>Utilisateur</label><input id="mqtt-user"></div>
+              <div class="field"><label>Mot de passe</label><input id="mqtt-password" type="password" placeholder="(inchangé)"></div>
+              <div class="field"><label>Base topic</label><input id="mqtt-base-topic"></div>
+            </div>
+            <p><button id="mqtt-save">Enregistrer et reconnecter</button></p>
+          </section>
+          <section class="card">
+            <h2>Lumières découvertes via MQTT</h2>
+            <table id="mqtt-lights-table">
+              <thead><tr><th></th><th>Nom</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="muted" id="mqtt-lights-empty" style="display:none">Aucune lumière découverte pour l'instant.</p>
+          </section>
+          <section class="card">
+            <h2>Appareils exclus (MQTT)</h2>
+            <table id="mqtt-excluded-table">
+              <thead><tr><th>Nom</th><th>IEEE</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="muted" id="mqtt-excluded-empty">Aucun appareil exclu.</p>
+          </section>
+        </div>
+
+        <div data-config-panel="ha" hidden>
+          <section class="card">
+            <h2>Connecteur Home Assistant <span id="ha-dot" class="dot off"></span><span id="ha-status" class="status"></span></h2>
+            <p class="hint">Récupère les entités <code>light.*</code> d'autres intégrations Home Assistant (WLED, Tuya, ESPHome, une autre intégration Hue...) — pas besoin de renseigner d'adresse ni de jeton, l'add-on utilise automatiquement l'accès Supervisor. Sans effet sur les lumières déjà couvertes par Zigbee2MQTT.</p>
+          </section>
+          <section class="card">
+            <h2>Lumières découvertes via Home Assistant</h2>
+            <table id="ha-lights-table">
+              <thead><tr><th></th><th>Nom</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="muted" id="ha-lights-empty" style="display:none">Aucune lumière découverte pour l'instant.</p>
+          </section>
+          <section class="card">
+            <h2>Appareils exclus (HA)</h2>
+            <table id="ha-excluded-table">
+              <thead><tr><th>Nom</th><th>Entité</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="muted" id="ha-excluded-empty">Aucun appareil exclu.</p>
+          </section>
+        </div>
       </section>
 
       <section class="view" data-view="lights" hidden>
@@ -262,22 +316,13 @@
             <h2 style="margin:0">Lumières découvertes</h2>
             <button type="button" class="small secondary" id="models-info-btn">Liste des modèles</button>
           </div>
-          <p class="hint">Cliquez sur « + pièce » dans la colonne Pièces pour affecter directement une lumière à une ou plusieurs pièces.</p>
+          <p class="hint">Cliquez sur « + pièce » dans la colonne Pièces pour affecter directement une lumière à une ou plusieurs pièces. Pour exclure une lumière ou voir un connecteur en détail, direction Configuration → Connecteur MQTT/HA.</p>
           <table id="lights-table">
-            <thead><tr><th></th><th>Nom</th><th>Modèle</th><th>Pièces</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Nom</th><th>Connecteur</th><th>Modèle</th><th>Pièces</th></tr></thead>
             <tbody></tbody>
           </table>
           <p class="hint">Le modèle détermine ce que l'application Hue pense contrôler (couleur, température, dégradé...). Si Zigbee2MQTT a mal deviné les capacités réelles de l'appareil, changez-le ici — voir « Liste des modèles » ci-dessus pour le détail de chacun.</p>
-          <p class="muted" id="lights-empty" style="display:none">Aucune lumière découverte pour l'instant — vérifiez la connexion MQTT (voir Configuration).</p>
-        </section>
-
-        <section class="card">
-          <h2>Appareils exclus</h2>
-          <table id="excluded-table">
-            <thead><tr><th>Nom</th><th>IEEE</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-          <p class="muted" id="excluded-empty">Aucun appareil exclu.</p>
+          <p class="muted" id="lights-empty" style="display:none">Aucune lumière découverte pour l'instant — vérifiez les connecteurs (voir Configuration).</p>
         </section>
       </section>
 
@@ -373,6 +418,11 @@ function switchView(view) {
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== view; });
 }
 
+function switchConfigTab(tab) {
+  document.querySelectorAll('.config-tab-btn').forEach(el => el.classList.toggle('active', el.dataset.configTab === tab));
+  document.querySelectorAll('[data-config-panel]').forEach(el => { el.hidden = el.dataset.configPanel !== tab; });
+}
+
 // <details> fires a native, non-bubbling `toggle` event, so it can't go
 // through the body's delegated click listener — wired via an inline
 // ontoggle= attribute instead. Only records the state; the native element
@@ -390,6 +440,30 @@ function lightName(id) {
 function roomName(id) {
   const r = state.rooms.find(x => x.id === id);
   return r ? r.name : id;
+}
+
+// Fills the "lights found" + "exclusions" tables for one connector's
+// Configuration sub-panel — same shape for both, only the id prefix and
+// exclusion key label (IEEE vs entity id) differ.
+function renderConnectorTables(connector, connectorState) {
+  const lightsTbody = document.querySelector(`#${connector}-lights-table tbody`);
+  const connectorLights = state.lights.filter(l => l.connector === connector);
+  lightsTbody.innerHTML = connectorLights.map(l => `
+    <tr>
+      <td><span class="dot ${l.reachable ? 'ok' : 'off'}"></span></td>
+      <td>${l.name}</td>
+      <td><button class="small danger" data-exclude="${l.id}">Exclure</button></td>
+    </tr>`).join('');
+  $(`${connector}-lights-empty`).style.display = connectorLights.length ? 'none' : 'block';
+
+  const exTbody = document.querySelector(`#${connector}-excluded-table tbody`);
+  exTbody.innerHTML = (connectorState.excluded || []).map(e => `
+    <tr>
+      <td>${e.name}</td>
+      <td class="muted">${e.key}</td>
+      <td><button class="small secondary" data-include="${connector}:${e.key}">Réinclure</button></td>
+    </tr>`).join('');
+  $(`${connector}-excluded-empty`).style.display = (connectorState.excluded || []).length ? 'none' : 'block';
 }
 
 // Re-renders the DOM without losing focus/cursor position in whichever
@@ -453,21 +527,12 @@ function render() {
     const modelOptions = models.map(m =>
       `<option value="${m.modelid}" ${m.modelid === l.modelid ? 'selected' : ''}>${m.modelid}</option>`
     ).join('');
-    const gradientControl = l.gradient_points != null ? `
-      <div style="margin-top:6px">
-        <label style="margin:0">Points de dégradé</label>
-        <select data-gradient-points="${l.id}" style="width:auto">
-          ${Array.from({length: 15}, (_, i) => i + 1).map(n =>
-            `<option value="${n}" ${n === l.gradient_points ? 'selected' : ''}>${n}</option>`
-          ).join('')}
-        </select>
-      </div>` : '';
     tr.innerHTML = `
       <td><span class="dot ${l.reachable ? 'ok' : 'off'}"></span></td>
       <td>${l.name}<div class="muted" style="font-size:11px">${statusText}${briText}</div></td>
+      <td><span class="chip">${l.connector === 'ha' ? 'HA' : 'MQTT'}</span></td>
       <td>
         <select data-light-model="${l.id}" style="min-width:200px">${modelOptions}</select>
-        ${gradientControl}
       </td>
       <td class="room-cell">
         ${chips}
@@ -475,11 +540,17 @@ function render() {
           <button type="button" class="small secondary pill" data-room-picker-toggle="${l.id}">+ pièce</button>
           ${popoverOpen ? `<div class="room-popover" data-room-popover="${l.id}">${popoverContent}</div>` : ''}
         </span>
-      </td>
-      <td><button class="small danger" data-exclude="${l.id}">Exclure</button></td>`;
+      </td>`;
     tbody.appendChild(tr);
   });
   $('lights-empty').style.display = state.lights.length ? 'none' : 'block';
+
+  // per-connector "lights found" + "exclusions" tables in Configuration
+  renderConnectorTables('mqtt', state.mqtt);
+  renderConnectorTables('ha', state.ha);
+  $('ha-dot').className = 'dot ' + (state.ha.connected ? 'ok' : 'off');
+  $('ha-status').textContent = !state.ha.available ? 'non disponible' : (state.ha.connected ? 'connecté' : 'déconnecté');
+  $('ha-status').className = 'status ' + (state.ha.connected ? 'ok' : (state.ha.available ? 'error' : ''));
 
   // room creation: searchable checklist, checked state preserved in `ui`
   // across re-renders, each light annotated with the room(s) it's already in.
@@ -546,17 +617,6 @@ function render() {
     roomsList.appendChild(div);
   });
 
-  // excluded devices
-  const exTbody = document.querySelector('#excluded-table tbody');
-  exTbody.innerHTML = '';
-  state.excluded.forEach(e => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${e.name}</td><td class="muted">${e.ieee}</td>
-      <td><button class="small secondary" data-include="${e.ieee}">Réinclure</button></td>`;
-    exTbody.appendChild(tr);
-  });
-  $('excluded-empty').style.display = state.excluded.length ? 'none' : 'block';
-
   // entertainment areas
   const entTbody = document.querySelector('#ent-table tbody');
   entTbody.innerHTML = '';
@@ -621,11 +681,6 @@ document.body.addEventListener('change', async (ev) => {
       await api(`api/lights/${lightId}/model`, { method: 'POST', body: JSON.stringify({ modelid: t.value }) });
       toast('Modèle mis à jour');
       await refresh();
-    } else if (t.dataset.gradientPoints) {
-      const lightId = t.dataset.gradientPoints;
-      await api(`api/lights/${lightId}/gradient_points`, { method: 'POST', body: JSON.stringify({ points_capable: parseInt(t.value, 10) }) });
-      toast('Nombre de points de dégradé mis à jour');
-      await refresh();
     }
   } catch (e) {
     toast('Erreur: ' + e.message);
@@ -638,6 +693,9 @@ document.body.addEventListener('click', async (ev) => {
   try {
     if (navItem) {
       switchView(navItem.dataset.view);
+      return;
+    } else if (t.classList.contains('config-tab-btn')) {
+      switchConfigTab(t.dataset.configTab);
       return;
     } else if (t.id === 'models-info-btn') {
       $('models-modal-body').innerHTML = models.map(m =>
@@ -669,7 +727,8 @@ document.body.addEventListener('click', async (ev) => {
       await api(`api/lights/${t.dataset.exclude}/exclude`, { method: 'POST' });
       toast('Lumière exclue');
     } else if (t.dataset.include) {
-      await api(`api/excluded/${t.dataset.include}/include`, { method: 'POST' });
+      const [connector, key] = t.dataset.include.split(/:(.*)/s);
+      await api(`api/excluded/${connector}/${encodeURIComponent(key)}/include`, { method: 'POST' });
       toast('Appareil réinclus');
     } else if (t.dataset.deleteRoom) {
       if (!confirm('Supprimer cette pièce ?')) return;

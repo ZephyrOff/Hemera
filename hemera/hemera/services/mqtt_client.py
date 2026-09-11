@@ -236,7 +236,7 @@ class MqttClient:
 
     def _sync_devices(self, devices: list[dict]) -> None:
         self._last_devices_payload = devices
-        excluded = self.cfg.yaml_config["config"].get("excluded_devices", {})
+        excluded = self.cfg.yaml_config["config"].get("excluded_devices", {}).get("mqtt", {})
         for device in devices:
             if device.get("type") != "Router" and device.get("type") != "EndDevice":
                 continue

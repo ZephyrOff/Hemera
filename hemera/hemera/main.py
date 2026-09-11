@@ -23,6 +23,7 @@ from hemera.config.handler import Config, default_config
 from hemera.logging_setup import configure_logging, get_logger
 from hemera.services.entertainment.dtls_psk.server import DTLSPSKServer
 from hemera.services.entertainment.engine import EntertainmentEngine
+from hemera.services.ha_client import HaClient
 from hemera.services.mdns import MdnsAdvertiser
 from hemera.services.mqtt_client import MqttClient
 from hemera.services.ssdp import SsdpService
@@ -137,6 +138,9 @@ async def async_main() -> None:
     )
     mqtt_client.start()
 
+    ha_client = HaClient(cfg, settings.ha_url, settings.ha_token)
+    ha_client.start()
+
     engine = EntertainmentEngine(mqtt_client.publish, target_fps=settings.entertainment_fps)
 
     def _psk_lookup(identity: str) -> bytes | None:
@@ -166,7 +170,7 @@ async def async_main() -> None:
     await v1_site.start()
     logging.info("Hue v1 API listening on %s:%d", settings.bind_ip, settings.http_port)
 
-    admin_api = AdminApi(cfg, mqtt_client, hue_v1)
+    admin_api = AdminApi(cfg, mqtt_client, ha_client, hue_v1)
     admin_app = web.Application()
     admin_api.register_routes(admin_app)
     admin_runner = web.AppRunner(admin_app)
@@ -271,6 +275,7 @@ async def async_main() -> None:
         await engine.stop_session()
         await dtls_server.async_stop()
         await mqtt_client.stop()
+        await ha_client.stop()
         await ssdp.stop()
         await mdns.stop()
         await v1_runner.cleanup()

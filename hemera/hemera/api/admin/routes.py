@@ -28,17 +28,25 @@ from hemera.logging_setup import get_logger
 from hemera.objects.entertainment_configuration import EntertainmentConfiguration
 from hemera.objects.group import Group
 from hemera.objects.light import _GRADIENT_MODELIDS
+from hemera.services.ha_client import HaClient
 from hemera.services.mqtt_client import MqttClient
 
 logging = get_logger(__name__)
 
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
+# Which field of a light's protocol_cfg identifies it for exclusion purposes,
+# per connector — an ieee_address for a Zigbee2MQTT light, a HA entity_id for
+# one from the HA connector. Keeps h_exclude_light/h_include_device generic
+# instead of duplicating one copy of the exclude flow per connector.
+_EXCLUDE_KEY_FIELD = {"mqtt": "ieee_address", "ha": "entity_id"}
+
 
 class AdminApi:
-    def __init__(self, cfg: Config, mqtt_client: MqttClient, hue_v1: HueV1Api) -> None:
+    def __init__(self, cfg: Config, mqtt_client: MqttClient, ha_client: HaClient, hue_v1: HueV1Api) -> None:
         self.cfg = cfg
         self.mqtt_client = mqtt_client
+        self.ha_client = ha_client
         self.hue_v1 = hue_v1
 
     @property
@@ -57,7 +65,7 @@ class AdminApi:
         app.router.add_post("/api/rooms/{id}/lights", self.h_add_light_to_room)
         app.router.add_delete("/api/rooms/{id}/lights/{light_id}", self.h_remove_light_from_room)
         app.router.add_post("/api/lights/{id}/exclude", self.h_exclude_light)
-        app.router.add_post("/api/excluded/{ieee}/include", self.h_include_device)
+        app.router.add_post("/api/excluded/{connector}/{key}/include", self.h_include_device)
         app.router.add_get("/api/models", self.h_models)
         app.router.add_post("/api/lights/{id}/model", self.h_set_light_model)
         app.router.add_post("/api/lights/{id}/gradient_points", self.h_set_gradient_points)
@@ -79,6 +87,7 @@ class AdminApi:
                 "id": light_id,
                 "name": light.name,
                 "modelid": light.modelid,
+                "connector": light.protocol,  # "mqtt" or "ha"
                 "reachable": light.state.get("reachable", True),
                 "on": light.state.get("on", False),
                 "bri": light.state.get("bri"),
@@ -102,10 +111,9 @@ class AdminApi:
                 entry["type"] = group.type
                 rooms.append(entry)
 
-        excluded = [
-            {"ieee": ieee, "name": name}
-            for ieee, name in self.yaml_config["config"].get("excluded_devices", {}).items()
-        ]
+        excluded_devices = self.yaml_config["config"].get("excluded_devices", {})
+        excluded_mqtt = [{"key": ieee, "name": name} for ieee, name in excluded_devices.get("mqtt", {}).items()]
+        excluded_ha = [{"key": eid, "name": name} for eid, name in excluded_devices.get("ha", {}).items()]
 
         mqtt_cfg = self.yaml_config["config"]["mqtt"]
         return web.json_response({
@@ -117,7 +125,13 @@ class AdminApi:
                 "host": mqtt_cfg["host"], "port": mqtt_cfg["port"],
                 "user": mqtt_cfg["user"], "base_topic": mqtt_cfg["base_topic"],
                 "connected": self.mqtt_client.connected,
+                "excluded": excluded_mqtt,
                 # password deliberately omitted from the response
+            },
+            "ha": {
+                "available": self.ha_client.available,
+                "connected": self.ha_client.connected,
+                "excluded": excluded_ha,
             },
             "link_button": {
                 "active": self.hue_v1.link_button_active,
@@ -126,7 +140,6 @@ class AdminApi:
             "lights": lights,
             "rooms": rooms,
             "entertainment_areas": entertainment_areas,
-            "excluded": excluded,
             "paired_users": len(self.yaml_config["apiUsers"]),
         })
 
@@ -236,10 +249,11 @@ class AdminApi:
         light = self.yaml_config["lights"].get(light_id)
         if light is None:
             return web.json_response({"error": "not found"}, status=404)
-        ieee = light.protocol_cfg.get("ieee_address")
-        if ieee:
-            excluded = self.yaml_config["config"].setdefault("excluded_devices", {})
-            excluded[ieee] = light.name
+        key_field = _EXCLUDE_KEY_FIELD.get(light.protocol)
+        key = light.protocol_cfg.get(key_field) if key_field else None
+        if key:
+            excluded = self.yaml_config["config"].setdefault("excluded_devices", {}).setdefault(light.protocol, {})
+            excluded[key] = light.name
         del self.yaml_config["lights"][light_id]
         for group in self.yaml_config["groups"].values():
             group.lights = [ref for ref in group.lights if ref() is not light]
@@ -249,11 +263,17 @@ class AdminApi:
         return web.json_response({"ok": True})
 
     async def h_include_device(self, request: web.Request) -> web.Response:
-        ieee = request.match_info["ieee"]
-        excluded = self.yaml_config["config"].get("excluded_devices", {})
-        excluded.pop(ieee, None)
+        connector = request.match_info["connector"]
+        key = request.match_info["key"]
+        if connector not in _EXCLUDE_KEY_FIELD:
+            return web.json_response({"error": "unknown connector"}, status=400)
+        excluded = self.yaml_config["config"].get("excluded_devices", {}).get(connector, {})
+        excluded.pop(key, None)
         self.cfg.mark_dirty("config")
-        self.mqtt_client.resync_devices()
+        if connector == "mqtt":
+            self.mqtt_client.resync_devices()
+        else:
+            self.ha_client.resync_devices()
         return web.json_response({"ok": True})
 
     # -- model / gradient points --------------------------------------------

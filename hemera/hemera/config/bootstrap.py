@@ -69,6 +69,8 @@ class Settings:
     mqtt_user: str
     mqtt_password: str
     mqtt_base_topic: str
+    ha_url: str
+    ha_token: str
     log_level: str = field(default="INFO")
 
 
@@ -120,6 +122,15 @@ def load_settings() -> Settings:
         mqtt_user=_env("HEMERA_MQTT_USER", ""),
         mqtt_password=_env("HEMERA_MQTT_PASSWORD", ""),
         mqtt_base_topic=_env("HEMERA_MQTT_BASE_TOPIC", "zigbee2mqtt"),
+        # Home Assistant's own Supervisor proxies Core's REST API at this
+        # fixed internal address for any add-on with `homeassistant_api:
+        # true` in config.yaml, authenticated with that same add-on's own
+        # SUPERVISOR_TOKEN (auto-injected into every add-on's environment) —
+        # no separate credentials to configure on a real install. Outside
+        # the add-on (local dev), HEMERA_HA_URL/HEMERA_HA_TOKEN (a manually
+        # created long-lived access token) stand in for both.
+        ha_url=_env("HEMERA_HA_URL", "http://supervisor/core/api"),
+        ha_token=_env("HEMERA_HA_TOKEN") or _env("SUPERVISOR_TOKEN", ""),
         log_level=_env("HEMERA_LOG_LEVEL", "INFO"),
     )
 

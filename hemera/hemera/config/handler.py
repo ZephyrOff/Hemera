@@ -152,6 +152,18 @@ class Config:
                     logging.error("Skipping corrupt apiUser %s: %s", user, exc)
         else:
             config = dict(default_config)
+        # Migrate excluded_devices from the old flat {ieee: name} shape (a
+        # single MQTT/Z2M-only exclusion list) to the per-connector
+        # {"mqtt": {ieee: name}, "ha": {entity_id: name}} shape the HA
+        # connector needs (entity_ids and ieee addresses share no format,
+        # but excluding one shouldn't require knowing the other exists).
+        excluded = config.get("excluded_devices", {})
+        if "mqtt" not in excluded and "ha" not in excluded:
+            config["excluded_devices"] = {"mqtt": excluded, "ha": {}}
+            self.mark_dirty("config")
+        else:
+            excluded.setdefault("mqtt", {})
+            excluded.setdefault("ha", {})
         self.yaml_config["config"] = config
 
         # lights
@@ -325,7 +337,9 @@ def default_config(bridge_id: str, mac: str, host_ip: str) -> dict:
         "mqtt": {"host": "127.0.0.1", "port": 1883, "user": "", "password": "", "base_topic": "zigbee2mqtt"},
         "portalservices": False,
         "zigbeechannel": 25,
-        "excluded_devices": {},  # ieee_address -> last known friendly_name, set via the admin panel
+        # Per-connector: "mqtt" keyed by ieee_address, "ha" keyed by entity_id
+        # — either -> last known friendly_name, set via the admin panel.
+        "excluded_devices": {"mqtt": {}, "ha": {}},
     }
 
 

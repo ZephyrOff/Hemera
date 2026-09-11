@@ -69,7 +69,13 @@ Implémenté et testé (voir la section Tests) :
   (persistée, prioritaire sur les options de l'add-on après le premier
   démarrage), création de pièces avec sélection des lumières, ajout/retrait
   de lumières sur les pièces existantes, exclusion/réinclusion d'appareils
-  détectés, simulation du bouton de couplage.
+  détectés, simulation du bouton de couplage, changement du modèle Hue
+  présenté par lumière.
+- **Connecteur Home Assistant**, en plus du connecteur MQTT/Zigbee2MQTT :
+  importe les lumières d'autres intégrations HA (WLED, Tuya, ESPHome...) via
+  l'API Home Assistant proxifiée par le Supervisor (`homeassistant_api`,
+  aucun jeton à saisir). Découverte par sondage périodique plutôt qu'en
+  direct — voir `hemera/DOCS.md`.
 
 Pas encore implémenté (voir le plan) : capteurs/interrupteurs Zigbee
 (motion, boutons).
