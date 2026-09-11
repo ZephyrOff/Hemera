@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.13.1"
+version: "0.14.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et

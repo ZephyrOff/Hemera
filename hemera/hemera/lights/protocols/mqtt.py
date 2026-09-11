@@ -15,6 +15,7 @@ import json
 import paho.mqtt.publish as publish
 
 from hemera.functions.colors import convert_xy, hsv_to_rgb
+from hemera.functions.gradient import colors_to_stops, hex_to_rgb_obj, resample_stops
 from hemera.logging_setup import get_logger
 
 logging = get_logger(__name__)
@@ -42,17 +43,30 @@ def set_light(light, data: dict) -> None:
                 rgbs = [convert_xy(p["color"]["xy"]["x"], p["color"]["xy"]["y"], 255) for p in value["points"]]
                 if light.modelid == "AQARA_GRADIENT":
                     # Aqara's LED Strip T1 (and similar) has no native "gradient"
-                    # Z2M feature at all — it's not a real Hue gradient product,
-                    # just presented as one so the app offers the same UI. The
-                    # underlying Zigbee cluster command instead needs one
-                    # 1-indexed {"segment", "color": {r,g,b}} entry per LED
-                    # segment (ported from the alex_light_studio HA integration,
-                    # which drives the same real hardware this way — no
-                    # left/right reversal there, unlike the Hue array below,
-                    # since segment indices already match physical order).
+                    # Z2M feature, and — unlike real Hue gradient hardware — no
+                    # onboard interpolation between segments either: every
+                    # physical segment needs its own explicit colour. The Hue
+                    # app's gradient editor appears to cap out at far fewer
+                    # colour points than these strips actually have segments
+                    # for (observed directly: a 10-segment strip, 3 colour
+                    # points from the app), so forwarding the app's points 1:1
+                    # as `segment_colors` only ever lit the first few segments,
+                    # leaving the rest showing whatever they last displayed.
+                    # Resampling however many points the app sent across the
+                    # strip's real segment count (points_capable, kept in sync
+                    # with Z2M's own reported length — see
+                    # mqtt_client.py's _sync_aqara_segment_count) reproduces
+                    # what alex_light_studio does for the same real hardware:
+                    # a smooth gradient computed bridge-side, since the device
+                    # itself will never do it. Real Hue-format gradients (the
+                    # `else` branch below) don't need this — genuine Hue driver
+                    # silicon does its own onboard interpolation.
+                    hexes = ["#" + "".join(f"{int(round(c)):02x}" for c in rgb) for rgb in rgbs]
+                    target_segments = light.protocol_cfg.get("points_capable", len(hexes))
+                    resampled = resample_stops(colors_to_stops(hexes), target_segments)
                     payload["segment_colors"] = [
-                        {"segment": i + 1, "color": {"r": r, "g": g, "b": b}}
-                        for i, (r, g, b) in enumerate(rgbs)
+                        {"segment": i + 1, "color": hex_to_rgb_obj(hex_color)}
+                        for i, hex_color in enumerate(resampled)
                     ]
                 else:
                     # Real Hue Gradient Lightstrips, and non-Hue strips faked as

@@ -106,8 +106,13 @@ Organisé en cinq vues, via le menu à gauche :
     dégradé se met à jour automatiquement à partir de la longueur réelle
     configurée dans Zigbee2MQTT pour cet appareil (5 segments par mètre) —
     y compris si une valeur différente avait été réglée manuellement dans
-    le panel — pour éviter qu'un dégradé publié pour moins de segments que
-    le bandeau n'en a réellement laisse une partie de celui-ci inchangée.
+    le panel. Toujours pour `AQARA_GRADIENT` : contrairement à un vrai
+    bandeau Hue, ce matériel n'a aucun lissage embarqué entre segments, et
+    l'application Hue semble limiter le dégradé à peu de points de couleur
+    quel que soit le nombre réel de segments du bandeau — le pont
+    ré-échantillonne donc automatiquement les couleurs reçues sur
+    l'ensemble des segments réels avant de les envoyer, pour un dégradé
+    continu sur tout le bandeau plutôt que limité à ses premiers segments.
 - **Pièces** : création avec sélection directe des lumières à y inclure
   (champ de recherche si la liste est longue). Une pièce déjà créée peut
   aussi recevoir plusieurs lumières d'un coup (sélection multiple avec

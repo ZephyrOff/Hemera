@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.14.0
+
+- **Correctif important sur `AQARA_GRADIENT` : le dégradé ne remplissait
+  qu'une partie du bandeau.** Cause identifiée en comparant avec Alex Light
+  Studio (le projet HA développé en parallèle contre le même bandeau) :
+  contrairement à un vrai bandeau Gradient Hue, le matériel Aqara n'a
+  **aucun lissage embarqué** entre segments — chaque segment doit recevoir
+  sa propre couleur explicite. Or l'application Hue semble plafonner le
+  nombre de points de couleur qu'on peut placer dans son éditeur de
+  dégradé bien en dessous du nombre réel de segments de ce type de
+  bandeau (observé concrètement : un bandeau à 10 segments, 3 points
+  envoyés par l'app). Le pont transmettait jusqu'ici ces points un pour un
+  vers `segment_colors` — un dégradé à 3 points sur un bandeau à 10
+  segments n'allumait donc que les 3 premiers, les 7 restants gardant
+  leur dernier état.
+  - Corrigé : les points reçus de l'app sont maintenant ré-échantillonnés
+    (interpolation linéaire par points d'ancrage, comme un dégradé CSS)
+    sur le nombre réel de segments du bandeau — celui suivi automatiquement
+    depuis la 0.13.1 via la longueur réelle rapportée par Zigbee2MQTT.
+    Nouveau module `functions/gradient.py`, porté depuis Alex Light Studio
+    (voir `NOTICE`) : c'est exactement le mécanisme dédié qu'il avait fallu
+    y développer pour la même raison.
+  - Uniquement pour `AQARA_GRADIENT` — un vrai bandeau Hue (ou
+    `HUE_UNSUPPORTED_GRADIENT`, du matériel Hue authentique que Z2M ne
+    reconnaît juste pas encore comme "gradient") a son propre lissage
+    matériel et n'a pas besoin de ce traitement.
+  - Testé de bout en bout : un dégradé à 3 points envoyé sur un bandeau
+    configuré à 10 segments réels publie désormais bien 10 couleurs
+    interpolées, du premier au dernier point, sur `segment_colors`.
+  - Concernant l'hypothèse d'un plafond de 3 points côté application Hue :
+    aucune source ne permet de le confirmer avec certitude de mon côté,
+    mais la correction fonctionne quel que soit le nombre réel de points
+    envoyés par l'app — inutile de trancher la question pour que ça marche.
+
 ## 0.13.1
 
 - **Correctif `AQARA_GRADIENT` : le nombre de points de dégradé peut
