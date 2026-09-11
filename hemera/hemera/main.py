@@ -11,7 +11,6 @@ import os
 import ssl
 import signal
 import sys
-import time
 
 from aiohttp import web
 
@@ -19,7 +18,7 @@ from hemera.api.admin.routes import AdminApi
 from hemera.api.v1.routes import HueV1Api
 from hemera.api.v2.eventstream import stream_v2_events, trim_eventstream_forever
 from hemera.api.v2.routes import HueV2Api
-from hemera.config.bootstrap import ensure_certificate, load_settings
+from hemera.config.bootstrap import apply_timezone, ensure_certificate, load_settings
 from hemera.config.handler import Config, default_config
 from hemera.logging_setup import configure_logging, get_logger
 from hemera.services.entertainment.dtls_psk.server import DTLSPSKServer
@@ -126,9 +125,7 @@ async def async_main() -> None:
     # default TZ regardless of what the config file says.
     configured_tz = cfg.yaml_config["config"].get("timezone")
     if configured_tz:
-        os.environ["TZ"] = configured_tz
-        if hasattr(time, "tzset"):  # Linux only; no-op on Windows dev
-            time.tzset()
+        apply_timezone(configured_tz)
     mqtt_cfg = cfg.yaml_config["config"]["mqtt"]
 
     cert_path = ensure_certificate(settings.config_dir, settings.mac, settings.host_ip)

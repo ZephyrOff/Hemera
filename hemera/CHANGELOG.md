@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.9.0
+
+- **Panel d'administration réorganisé en vues séparées**, avec un menu de
+  navigation à gauche : Appairage, Configuration, Lumières, Pièces,
+  Entertainment — au lieu d'une seule longue page où toutes les sections
+  s'empilaient. Chaque section précédente est simplement déplacée dans la
+  vue correspondante ; aucun comportement n'a changé côté fonctionnalités
+  déjà en place (recherche, sélection multiple, affectation directe depuis
+  le tableau des lumières...).
+- **Nouvelle vue Configuration → Général** : renommer le pont et définir son
+  fuseau horaire directement depuis le panel, sans dépendre de l'application
+  Hue pour ce dernier. Le champ fuseau horaire est une liste déroulante des
+  552 fuseaux valides (la même liste que `GET .../info/timezones`) plutôt
+  qu'un champ texte libre. Les deux champs passent par le même mécanisme que
+  ce que l'app Hue elle-même déclenche en interne (`config.name` /
+  `config.timezone` + application immédiate au processus pour le fuseau) —
+  ce n'est pas un système parallèle.
+- **Suppression de la configuration MQTT des options de l'add-on**
+  (`mqtt_host`, `mqtt_port`, `mqtt_user`, `mqtt_password`,
+  `mqtt_base_topic`) : elle faisait doublon avec le panel, qui est de toute
+  façon devenu la source de vérité dès le premier démarrage. Au premier
+  démarrage, la détection automatique du broker Mosquitto (add-on officiel,
+  via `bashio::services`) reste le point de départ ; en son absence,
+  l'add-on démarre avec un broker par défaut (`127.0.0.1:1883`) à corriger
+  depuis Configuration → Connexion MQTT. Les installations existantes ne
+  sont pas affectées : leur configuration MQTT déjà enregistrée dans
+  `/data` continue de s'appliquer normalement.
+
 ## 0.8.0
 
 Deux retours utilisateur sur l'usage courant du pont (pairing et versions

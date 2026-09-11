@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.8.0"
+version: "0.9.0"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -29,27 +29,19 @@ ports_description:
   2100/udp: "Hue Entertainment (DTLS/HueStream) — Hue Sync Box streaming"
   8099/tcp: "Admin panel (MQTT config, rooms, link button)"
 # Lets bashio::services pull the Mosquitto add-on's connection details
-# automatically when mqtt_host is left empty in options (see rootfs run script).
+# automatically (see rootfs run script). MQTT connection settings are not
+# add-on options: they're configured from the admin panel (port 8099) only,
+# which is the persistent source of truth for them after first boot anyway.
 services:
   - mqtt:want
 options:
   mac: ""
   timezone: ""
-  mqtt_host: ""
-  mqtt_port: 1883
-  mqtt_user: ""
-  mqtt_password: ""
-  mqtt_base_topic: "zigbee2mqtt"
   entertainment_fps: 15
   log_level: "info"
 schema:
   mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)?"
   timezone: "str?"
-  mqtt_host: "str?"
-  mqtt_port: "port?"
-  mqtt_user: "str?"
-  mqtt_password: "password?"
-  mqtt_base_topic: "str"
   entertainment_fps: "int(1,30)"
   log_level: "list(debug|info|warning|error)"
 # No `map` entries needed: persisted state (paired users, lights/groups/

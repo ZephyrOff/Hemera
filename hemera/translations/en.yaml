@@ -13,26 +13,9 @@ configuration:
     description: >-
       IANA timezone (e.g. Europe/Paris) reported to the Hue app. Leave empty
       to use Home Assistant's own configured timezone automatically. Only
-      applied once, on first start — after that, whatever timezone the Hue
-      app itself sets during onboarding takes over, so changing this later
-      has no effect unless you clear the add-on's persisted data.
-  mqtt_host:
-    name: MQTT host
-    description: >-
-      Leave empty to auto-discover the Mosquitto broker add-on. Set this
-      only if your MQTT broker is not the Mosquitto add-on.
-  mqtt_port:
-    name: MQTT port
-    description: Ignored when mqtt_host is left empty (auto-discovered instead).
-  mqtt_user:
-    name: MQTT username
-    description: Ignored when mqtt_host is left empty (auto-discovered instead).
-  mqtt_password:
-    name: MQTT password
-    description: Ignored when mqtt_host is left empty (auto-discovered instead).
-  mqtt_base_topic:
-    name: Zigbee2MQTT base topic
-    description: The base_topic configured in Zigbee2MQTT (default "zigbee2mqtt").
+      applied once, on first start — after that, the admin panel (or the Hue
+      app itself, during onboarding) is the source of truth, so changing
+      this later has no effect unless you clear the add-on's persisted data.
   entertainment_fps:
     name: Entertainment update rate (Hz)
     description: >-

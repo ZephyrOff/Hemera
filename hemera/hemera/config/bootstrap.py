@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import time
 import uuid
 from dataclasses import dataclass, field
 
@@ -26,6 +27,23 @@ logging = get_logger(__name__)
 
 def _env(name: str, default: str | None = None) -> str | None:
     return os.environ.get(name, default)
+
+
+def apply_timezone(tz: str) -> None:
+    """Apply an IANA timezone to this process's own idea of local time.
+
+    Shared by main.py (on every boot, for whatever's already persisted) and
+    the v1 PUT /api/{user}/config and admin-panel handlers (whenever a
+    client sets a new one) — matches diyHue's flaskUI/restful.py /
+    configManager/configHandler.py exactly, ``time.tzset()`` re-reads
+    ``os.environ['TZ']`` into the C library's local-time state so
+    ``datetime.now()`` reflects it immediately, without a restart.
+    ``tzset`` doesn't exist on Windows (dev-only; the deployment target is
+    Linux), so it's a deliberate no-op there.
+    """
+    os.environ["TZ"] = tz
+    if hasattr(time, "tzset"):
+        time.tzset()
 
 
 def _env_int(name: str, default: int) -> int:

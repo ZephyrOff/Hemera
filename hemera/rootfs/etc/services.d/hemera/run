@@ -6,7 +6,6 @@ export HEMERA_CONFIG_DIR="/data"
 export HEMERA_HTTP_PORT="80"
 export HEMERA_HTTPS_PORT="443"
 export HEMERA_LOG_LEVEL="$(bashio::config 'log_level' | tr '[:lower:]' '[:upper:]')"
-export HEMERA_MQTT_BASE_TOPIC="$(bashio::config 'mqtt_base_topic')"
 export HEMERA_ENTERTAINMENT_FPS="$(bashio::config 'entertainment_fps')"
 
 if bashio::config.has_value 'mac'; then
@@ -25,20 +24,18 @@ else
     export HEMERA_TIMEZONE="$(bashio::info.timezone)"
 fi
 
-if bashio::config.has_value 'mqtt_host'; then
-    bashio::log.info "Using manually configured MQTT broker"
-    export HEMERA_MQTT_HOST="$(bashio::config 'mqtt_host')"
-    export HEMERA_MQTT_PORT="$(bashio::config 'mqtt_port')"
-    export HEMERA_MQTT_USER="$(bashio::config 'mqtt_user')"
-    export HEMERA_MQTT_PASSWORD="$(bashio::config 'mqtt_password')"
-elif bashio::services.available 'mqtt'; then
-    bashio::log.info "No MQTT host configured — auto-discovering the Mosquitto broker add-on"
+# MQTT connection settings are not add-on options — the admin panel (port
+# 8099) is the only way to configure them, and stays authoritative across
+# restarts once set (see main.py's is_first_run handling). This only seeds
+# a starting point on a brand new install.
+if bashio::services.available 'mqtt'; then
+    bashio::log.info "Auto-discovering the Mosquitto broker add-on"
     export HEMERA_MQTT_HOST="$(bashio::services 'mqtt' 'host')"
     export HEMERA_MQTT_PORT="$(bashio::services 'mqtt' 'port')"
     export HEMERA_MQTT_USER="$(bashio::services 'mqtt' 'username')"
     export HEMERA_MQTT_PASSWORD="$(bashio::services 'mqtt' 'password')"
 else
-    bashio::log.warning "No MQTT host configured and no Mosquitto add-on found — set mqtt_host in the add-on options"
+    bashio::log.warning "No Mosquitto add-on found — configure your MQTT broker from the admin panel (port 8099)"
     export HEMERA_MQTT_HOST="127.0.0.1"
     export HEMERA_MQTT_PORT="1883"
 fi

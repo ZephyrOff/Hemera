@@ -31,11 +31,15 @@ le certificat au redémarrage.
 | Option | Rôle |
 |---|---|
 | `mac` | MAC réelle de l'interface réseau du serveur (voir ci-dessus). Laisser vide pour tenter une auto-détection — non fiable sous réseau hôte. |
-| `mqtt_host` | Laisser vide pour utiliser automatiquement l'add-on Mosquitto broker installé. Ne renseigner que si vous utilisez un autre broker MQTT. |
-| `mqtt_port`, `mqtt_user`, `mqtt_password` | Ignorés si `mqtt_host` est vide (auto-détection). |
-| `mqtt_base_topic` | Le `base_topic` configuré dans Zigbee2MQTT (`zigbee2mqtt` par défaut). |
+| `timezone` | Fuseau horaire IANA (ex. `Europe/Paris`) reporté à l'app Hue. Laisser vide pour reprendre automatiquement celui déjà configuré dans Home Assistant. N'est utilisé qu'au tout premier démarrage — ensuite, le panel d'administration (Configuration → Général) est la référence. |
 | `entertainment_fps` | Débit de mise à jour des couleurs pendant une session Hue Entertainment (Sync Box), 1 à 30 Hz. À baisser si le réseau Zigbee sature. |
 | `log_level` | Niveau de log. |
+
+La connexion MQTT n'est **pas** une option de l'add-on : elle se configure
+uniquement depuis le panel d'administration (Configuration → Connexion
+MQTT), qui en est la référence dès le premier démarrage. Au tout premier
+démarrage, sans configuration existante, l'add-on Mosquitto est
+auto-détecté s'il est installé.
 
 ## Hue Entertainment (Sync Box)
 
@@ -63,23 +67,30 @@ Accessible via le bouton "Web UI" de l'add-on, ou directement sur
 comme le bouton physique d'un vrai bridge, l'accès au réseau local est
 considéré comme suffisant.
 
-- **Bouton de couplage** : le pairing avec l'application Hue réussit
-  toujours, sans condition — pas besoin de l'armer avant. Le bouton reste
-  disponible pour compatibilité/affichage.
-- **MQTT** : modifier et reconnecter la connexion au broker sans redémarrer.
-  Une fois enregistrée depuis le panel, cette configuration prend le pas sur
-  les options de l'add-on au démarrage suivant.
-- **Lumières** : liste des appareils Zigbee2MQTT détectés, avec la
-  possibilité de les exclure du pont (ils redeviennent inclus, avec
-  réapparition immédiate, via le bouton "Réinclure").
-- **Pièces (rooms)** : création avec sélection directe des lumières à y
-  inclure (champ de recherche si la liste est longue). Une fois créées,
-  l'affectation aux pièces se fait directement depuis le tableau des
-  lumières — un bouton « + pièce » sur chaque ligne ouvre un petit menu
-  pour l'ajouter à une pièce existante, et chaque étiquette de pièce a un
-  × pour l'en retirer. La section Pièces reste disponible pour ajouter
-  plusieurs lumières à une pièce en une fois (sélection multiple avec
-  recherche) ou supprimer une pièce entière.
+Organisé en cinq vues, via le menu à gauche :
+
+- **Appairage** : le pairing avec l'application Hue réussit toujours, sans
+  condition — pas besoin de l'armer avant. Le bouton reste disponible pour
+  compatibilité/affichage.
+- **Configuration** :
+  - *Général* : renommer le pont, définir son fuseau horaire (liste
+    déroulante des fuseaux valides). Passe par le même mécanisme que ce que
+    l'app Hue elle-même peut définir pendant sa propre configuration — les
+    deux agissent sur le même réglage, ni l'un ni l'autre ne prend le pas
+    durablement sur l'autre.
+  - *Connexion MQTT* : modifier et reconnecter la connexion au broker sans
+    redémarrer. C'est l'unique endroit où la configurer (voir ci-dessus) ;
+    une fois enregistrée, elle survit aux redémarrages.
+- **Lumières** : liste des appareils Zigbee2MQTT détectés — affectation
+  directe à une ou plusieurs pièces (bouton « + pièce » sur chaque ligne,
+  × sur chaque étiquette pour en retirer une) — et, plus bas, les appareils
+  exclus du pont (réinclusion immédiate via "Réinclure").
+- **Pièces** : création avec sélection directe des lumières à y inclure
+  (champ de recherche si la liste est longue). Une pièce déjà créée peut
+  aussi recevoir plusieurs lumières d'un coup (sélection multiple avec
+  recherche) ou être supprimée entièrement.
+- **Entertainment** : zones Entertainment détectées (créées depuis l'app Hue
+  Sync ou la Sync Box) et leur statut de streaming.
 
 ## Persistance
 

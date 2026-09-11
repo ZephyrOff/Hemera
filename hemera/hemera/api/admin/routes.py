@@ -19,6 +19,8 @@ import os
 from aiohttp import web
 
 from hemera.api.v1.routes import HueV1Api
+from hemera.api.v1.timezones import TIMEZONES
+from hemera.config.bootstrap import apply_timezone
 from hemera.config.handler import Config
 from hemera.lights.discover import next_free_id
 from hemera.logging_setup import get_logger
@@ -44,6 +46,8 @@ class AdminApi:
     def register_routes(self, app: web.Application) -> None:
         app.router.add_get("/", self.h_index)
         app.router.add_get("/api/state", self.h_state)
+        app.router.add_get("/api/timezones", self.h_timezones)
+        app.router.add_post("/api/bridge", self.h_set_bridge)
         app.router.add_post("/api/mqtt", self.h_set_mqtt)
         app.router.add_post("/api/linkbutton", self.h_linkbutton)
         app.router.add_post("/api/rooms", self.h_create_room)
@@ -96,6 +100,10 @@ class AdminApi:
 
         mqtt_cfg = self.yaml_config["config"]["mqtt"]
         return web.json_response({
+            "bridge": {
+                "name": self.yaml_config["config"]["name"],
+                "timezone": self.yaml_config["config"].get("timezone", ""),
+            },
             "mqtt": {
                 "host": mqtt_cfg["host"], "port": mqtt_cfg["port"],
                 "user": mqtt_cfg["user"], "base_topic": mqtt_cfg["base_topic"],
@@ -112,6 +120,29 @@ class AdminApi:
             "excluded": excluded,
             "paired_users": len(self.yaml_config["apiUsers"]),
         })
+
+    # -- bridge (name / timezone) -----------------------------------------------
+
+    async def h_timezones(self, request: web.Request) -> web.Response:
+        return web.json_response(TIMEZONES)
+
+    async def h_set_bridge(self, request: web.Request) -> web.Response:
+        body = await request.json()
+        if "name" in body:
+            name = str(body["name"]).strip()
+            if name:
+                self.yaml_config["config"]["name"] = name
+        if "timezone" in body:
+            tz = str(body["timezone"]).strip()
+            if tz:
+                # Same field, same effect, as the Hue app's own PUT
+                # /api/{user}/config timezone (see hue.api.v1.routes) — the
+                # admin panel is just a second, more convenient way in for
+                # the person running the add-on, not a separate mechanism.
+                self.yaml_config["config"]["timezone"] = tz
+                apply_timezone(tz)
+        self.cfg.mark_dirty("config")
+        return web.json_response({"ok": True})
 
     # -- mqtt ------------------------------------------------------------------
 

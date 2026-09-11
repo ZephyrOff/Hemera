@@ -18,7 +18,6 @@ for clients that check it.
 
 from __future__ import annotations
 
-import os
 import secrets
 import time
 import uuid
@@ -28,6 +27,7 @@ from datetime import datetime, timezone
 from aiohttp import web
 
 from hemera.api.v1.timezones import TIMEZONES
+from hemera.config.bootstrap import apply_timezone
 from hemera.config.handler import Config
 from hemera.logging_setup import get_logger
 from hemera.objects.api_user import ApiUser
@@ -256,9 +256,7 @@ class HueV1Api:
             # /api/config actually reflects it too.
             tz = body["timezone"]
             self.yaml_config["config"]["timezone"] = tz
-            os.environ["TZ"] = tz
-            if hasattr(time, "tzset"):  # Linux only; no-op on Windows dev
-                time.tzset()
+            apply_timezone(tz)
         self.cfg.mark_dirty("config")
         return web.json_response(_success_list("/config", body))
 
