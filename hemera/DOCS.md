@@ -73,7 +73,13 @@ considéré comme suffisant.
   possibilité de les exclure du pont (ils redeviennent inclus, avec
   réapparition immédiate, via le bouton "Réinclure").
 - **Pièces (rooms)** : création avec sélection directe des lumières à y
-  inclure, ajout/retrait ensuite depuis la liste des pièces existantes.
+  inclure (champ de recherche si la liste est longue). Une fois créées,
+  l'affectation aux pièces se fait directement depuis le tableau des
+  lumières — un bouton « + pièce » sur chaque ligne ouvre un petit menu
+  pour l'ajouter à une pièce existante, et chaque étiquette de pièce a un
+  × pour l'en retirer. La section Pièces reste disponible pour ajouter
+  plusieurs lumières à une pièce en une fois (sélection multiple avec
+  recherche) ou supprimer une pièce entière.
 
 ## Persistance
 

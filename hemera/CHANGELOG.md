@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.8.0
+
+Deux retours utilisateur sur l'usage courant du pont (pairing et versions
+étant désormais réglés) :
+
+- **Panel d'administration : gestion des pièces repensée**, jugée peu
+  intuitive. Deux problèmes corrigés :
+  - **Bug réel trouvé en creusant** : le panel se rafraîchit automatiquement
+    toutes les 5 secondes (pour refléter les changements MQTT/pairing en
+    direct), mais ce rafraîchissement reconstruisait entièrement la liste de
+    cases à cocher pour créer une pièce — toute sélection en cours,
+    au-delà de 5 secondes, disparaissait silencieusement sans aucun
+    indice sur la cause. Probablement la source principale du ressenti
+    "pas intuitif". Corrigé : l'état des cases cochées, les champs de
+    recherche et le focus/curseur en cours de frappe survivent maintenant
+    au rafraîchissement automatique.
+  - **Gestion des pièces directement depuis le tableau des lumières** :
+    chaque lumière affiche désormais ses pièces sous forme d'étiquettes
+    (avec un × pour en retirer une) et un bouton « + pièce » ouvrant un
+    petit menu pour l'ajouter à une autre pièce — plus besoin de descendre
+    jusqu'à la section Pièces et chercher la bonne carte. La section Pièces
+    elle-même gagne un champ de recherche et une sélection multiple
+    ("Ajouter la sélection") au lieu d'un menu déroulant à un seul choix
+    répété pour chaque lumière. Aucun changement côté API/backend — tout
+    repose sur les routes existantes (`api/rooms/...`).
+- **Bandeau Hue Gradient Lightstrip bridé à un nombre de points fixe** :
+  `points_capable` (le nombre de couleurs qu'on peut placer sur le
+  dégradé, exposé dans `gradient.points_capable` du CLIP v2) était figé à
+  `7` pour absolument tous les appareils détectés comme "gradient", sans
+  jamais regarder ce que l'appareil réel annonce. Corrigé : lu directement
+  depuis l'expose Zigbee2MQTT du bandeau (`length_max` de l'expose de type
+  `list` nommé `gradient` — le champ que zigbee-herdsman-converters
+  utilise réellement pour ça), avec un repli sur 7 seulement si Z2M ne le
+  fournit pas. S'applique aussi aux lumières déjà découvertes avant cette
+  mise à jour (la resynchronisation périodique met maintenant aussi ce
+  champ à jour, alors qu'elle ne touchait jusqu'ici qu'au nom).
+  - Au passage, correction d'un vrai bug trouvé en comparant avec diyHue
+    (`HueObjects/Light.py`) : la ressource `entertainment` (utilisée pour
+    le streaming Hue Sync, pas pour le dégradé statique) réutilisait par
+    erreur ce même `points_capable` comme `max_segments`, alors que ce
+    sont deux nombres sans rapport — diyHue fixe `max_segments` à `10`
+    pour ce type de bandeau (nombre total de pixels virtuels répartis sur
+    les 3 zones physiques réelles du matériau), indépendamment du nombre
+    de points de dégradé statique disponibles. Sans effet visible connu,
+    mais un désaccord avec le vrai bridge que ça vaut mieux ne pas laisser
+    traîner.
+
 ## 0.7.0
 
 Suite au succès de l'appairage en 0.6.0, deux nouveaux irritants signalés

@@ -32,6 +32,12 @@ logging = get_logger(__name__)
 _RECONNECT_INTERVAL_S = 5.0
 
 
+# Real Hue Gradient Lightstrips advertise 7 via their own `gradient.points_capable`
+# — used only as a fallback for Z2M devices whose `gradient` expose doesn't carry
+# its own `length_max` (see _pick_gradient_length_max below).
+_DEFAULT_GRADIENT_POINTS = 7
+
+
 def _pick_modelid(exposes: list[dict]) -> str | None:
     """Best-effort mapping from a Z2M device's `exposes` to a Hue modelid template.
 
@@ -77,6 +83,39 @@ def _pick_modelid(exposes: list[dict]) -> str | None:
     if has_bri:
         return "LWB010"
     return "LOM001"
+
+
+def _pick_gradient_length_max(exposes: list[dict]) -> int:
+    """Real max gradient stop count reported by Z2M's own `gradient` expose
+    (``length_max`` on its ``list``-type expose — zigbee-herdsman-converters'
+    actual schema for gradient-capable lights), rather than a single hardcoded
+    number for every device.
+
+    Different gradient-capable Zigbee lights genuinely support different stop
+    counts (the official Hue Gradient Lightstrip caps at 7; some third-party
+    RGBIC strips exposed as "gradient" through Z2M support more or fewer) —
+    hardcoding 7 for all of them either falsely under- or over-advertises a
+    given device's real capability to the Hue app. Falls back to Hue's own
+    documented 7 only when Z2M doesn't report a length_max at all.
+    """
+
+    def walk(expose: dict) -> int | None:
+        if expose.get("property") == "gradient" and "length_max" in expose:
+            try:
+                return int(expose["length_max"])
+            except (TypeError, ValueError):
+                return None
+        for sub in expose.get("features", []) or []:
+            found = walk(sub)
+            if found is not None:
+                return found
+        return None
+
+    for expose in exposes or []:
+        found = walk(expose)
+        if found is not None and found > 0:
+            return found
+    return _DEFAULT_GRADIENT_POINTS
 
 
 class MqttClient:
@@ -194,6 +233,7 @@ class MqttClient:
                 continue
             if ieee in excluded:
                 continue
+            exposes = (device.get("definition") or {}).get("exposes", [])
             existing = self._find_light_by_ieee(ieee)
             if existing is not None:
                 # Friendly name may have been renamed in Z2M — keep our command topic in sync.
@@ -201,9 +241,18 @@ class MqttClient:
                     existing.protocol_cfg["friendly_name"] = friendly_name
                     existing.protocol_cfg["command_topic"] = f"{self.base_topic}/{friendly_name}/set"
                     self.cfg.mark_dirty("lights")
+                # Re-derive the real gradient stop count too — lights discovered
+                # before this device-reported length_max was read (or before
+                # Z2M itself started reporting it) were stuck on the old
+                # hardcoded default forever, since this branch previously
+                # returned before ever looking at it again.
+                if existing.modelid == "LCX004":
+                    real_points = _pick_gradient_length_max(exposes)
+                    if existing.protocol_cfg.get("points_capable") != real_points:
+                        existing.protocol_cfg["points_capable"] = real_points
+                        self.cfg.mark_dirty("lights")
                 continue
 
-            exposes = (device.get("definition") or {}).get("exposes", [])
             modelid = _pick_modelid(exposes)
             if modelid is None:
                 continue  # not a light (a sensor/switch — handled in a later step)
@@ -220,7 +269,7 @@ class MqttClient:
                 },
             }
             if modelid == "LCX004":
-                protocol_cfg["points_capable"] = 7
+                protocol_cfg["points_capable"] = _pick_gradient_length_max(exposes)
             add_new_light(self.cfg, modelid, friendly_name, "mqtt", protocol_cfg)
 
     def _update_light_state(self, friendly_name: str, data: dict) -> None:

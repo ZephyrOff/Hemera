@@ -31,19 +31,43 @@
   button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
   button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   button.small { padding: 4px 9px; font-size: 12px; font-weight: 500; }
+  button.pill { padding: 3px 10px; font-size: 12px; font-weight: 500; border-radius: 999px; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
   th { color: var(--muted); font-weight: 500; }
   .chip { display: inline-block; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-size: 12px; margin: 2px 3px 2px 0; }
   .chip button { background: none; border: none; color: var(--muted); padding: 0 0 0 6px; font-size: 12px; }
+  .chip.hint { color: var(--muted); border-style: dashed; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .dot.ok { background: var(--ok); } .dot.off { background: var(--muted); }
   .status { font-size: 13px; color: var(--muted); }
   .status.ok { color: var(--ok); } .status.error { color: var(--danger); }
   .muted { color: var(--muted); }
-  .checklist { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
-  .checklist label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
+  .hint { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+  .checklist { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  .checklist label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); padding: 4px 2px; }
+  .checklist label:hover { background: var(--bg); border-radius: 4px; }
   .checklist input { width: auto; }
+  .checklist .empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+  .light-label-name { flex: 1; }
+  .room-cell { position: relative; }
+  .room-picker-wrap { position: relative; display: inline-block; }
+  .room-popover {
+    position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 4px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.15); padding: 6px; min-width: 160px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .room-popover button.pill { text-align: left; background: transparent; color: var(--text); border: none; }
+  .room-popover button.pill:hover { background: var(--bg); }
+  .room-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .room-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .room-card-header strong { font-size: 14px; }
+  details.add-lights { margin-top: 8px; }
+  details.add-lights > summary { cursor: pointer; font-size: 13px; color: var(--accent); font-weight: 600; list-style: none; }
+  details.add-lights > summary::-webkit-details-marker { display: none; }
+  details.add-lights > summary::before { content: "+ "; }
+  details[open].add-lights > summary::before { content: "− "; }
   .toast { position: fixed; bottom: 20px; right: 20px; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
   .toast.show { opacity: 1; }
 </style>
@@ -78,6 +102,7 @@
 
   <section class="card">
     <h2>Lumières découvertes</h2>
+    <p class="hint">Cliquez sur « + » dans la colonne Pièces pour affecter directement une lumière à une ou plusieurs pièces.</p>
     <table id="lights-table">
       <thead><tr><th></th><th>Nom</th><th>Modèle</th><th>Pièces</th><th></th></tr></thead>
       <tbody></tbody>
@@ -88,10 +113,13 @@
   <section class="card">
     <h2>Pièces (rooms)</h2>
     <div id="rooms-list"></div>
+
     <h2 style="margin-top:18px">Créer une pièce</h2>
     <div class="row">
       <div class="field"><label>Nom</label><input id="room-name" placeholder="Salon"></div>
     </div>
+    <label style="margin-top:10px">Lumières à inclure (optionnel — modifiable plus tard)</label>
+    <input id="room-light-search" placeholder="Rechercher une lumière…">
     <div class="checklist" id="room-light-picker"></div>
     <p><button id="room-create">Créer la pièce</button></p>
   </section>
@@ -121,6 +149,19 @@
 const $ = (id) => document.getElementById(id);
 let state = null;
 
+// Transient UI state that must survive the periodic refresh() re-render
+// (previously every checkbox selection in the room-creation checklist was
+// silently wiped by the 5s auto-refresh mid-click — the #1 complaint about
+// this panel not feeling "intuitive"). Kept outside render() entirely.
+const ui = {
+  roomCreateSearch: '',
+  roomCreateChecked: new Set(),
+  roomAddSearch: {},   // roomId -> search text
+  roomAddChecked: {},  // roomId -> Set(lightId)
+  roomAddOpen: {},     // roomId -> is the "Ajouter des lumières" panel expanded
+  openPicker: null,    // lightId whose inline room-popover is open, or null
+};
+
 function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
@@ -138,9 +179,44 @@ async function api(path, opts) {
   return res.status === 204 ? null : res.json();
 }
 
+// <details> fires a native, non-bubbling `toggle` event, so it can't go
+// through the body's delegated click listener — wired via an inline
+// ontoggle= attribute instead. Only records the state; the native element
+// already reflects it, no re-render needed here (avoids fighting the
+// browser's own focus/animation for this interaction).
+function onRoomAddToggle(roomId, isOpen) {
+  ui.roomAddOpen[roomId] = isOpen;
+}
+
 function lightName(id) {
   const l = state.lights.find(x => x.id === id);
   return l ? l.name : id;
+}
+
+function roomName(id) {
+  const r = state.rooms.find(x => x.id === id);
+  return r ? r.name : id;
+}
+
+// Re-renders the DOM without losing focus/cursor position in whichever
+// text input the user is currently typing in — render() fully replaces
+// several containers' innerHTML, which would otherwise steal focus away
+// mid-keystroke on every periodic refresh.
+function renderPreservingFocus() {
+  const active = document.activeElement;
+  const restore = active && active.id && document.body.contains(active)
+    ? { id: active.id, start: active.selectionStart, end: active.selectionEnd }
+    : null;
+  render();
+  if (restore) {
+    const el = document.getElementById(restore.id);
+    if (el) {
+      el.focus();
+      if (typeof restore.start === 'number' && el.setSelectionRange) {
+        try { el.setSelectionRange(restore.start, restore.end); } catch (e) {}
+      }
+    }
+  }
 }
 
 function render() {
@@ -160,32 +236,59 @@ function render() {
   $('mqtt-status').textContent = state.mqtt.connected ? 'connecté' : 'déconnecté';
   $('mqtt-status').className = 'status ' + (state.mqtt.connected ? 'ok' : 'error');
 
-  // lights table
+  // lights table — each row's "Pièces" cell is directly editable: chips to
+  // remove, a "+" to open an inline picker of rooms not yet containing it.
   const tbody = document.querySelector('#lights-table tbody');
   tbody.innerHTML = '';
   state.lights.forEach(l => {
     const tr = document.createElement('tr');
-    const rooms = l.room_ids.map(rid => {
-      const r = state.rooms.find(x => x.id === rid);
-      return r ? r.name : rid;
-    }).join(', ') || '—';
+    const chips = l.room_ids.map(rid =>
+      `<span class="chip">${roomName(rid)}<button data-light-room-remove="${l.id}:${rid}" title="Retirer de cette pièce">×</button></span>`
+    ).join('');
+    const availableRooms = state.rooms.filter(r => !l.room_ids.includes(r.id));
+    const popoverOpen = ui.openPicker === l.id;
+    const popoverContent = availableRooms.length
+      ? availableRooms.map(r => `<button type="button" class="pill" data-light-room-add="${l.id}:${r.id}">${r.name}</button>`).join('')
+      : '<span class="muted" style="padding:4px 6px;display:block">Aucune pièce disponible — créez-en une ci-dessous.</span>';
     tr.innerHTML = `
       <td><span class="dot ${l.reachable ? 'ok' : 'off'}"></span></td>
       <td>${l.name}</td>
       <td class="muted">${l.modelid}</td>
-      <td>${rooms}</td>
+      <td class="room-cell">
+        ${chips}
+        <span class="room-picker-wrap">
+          <button type="button" class="small secondary pill" data-room-picker-toggle="${l.id}">+ pièce</button>
+          ${popoverOpen ? `<div class="room-popover" data-room-popover="${l.id}">${popoverContent}</div>` : ''}
+        </span>
+      </td>
       <td><button class="small danger" data-exclude="${l.id}">Exclure</button></td>`;
     tbody.appendChild(tr);
   });
   $('lights-empty').style.display = state.lights.length ? 'none' : 'block';
 
-  // room creation light picker
+  // room creation: searchable checklist, checked state preserved in `ui`
+  // across re-renders, each light annotated with the room(s) it's already in.
+  const search = ui.roomCreateSearch.trim().toLowerCase();
+  const filteredLights = state.lights.filter(l => l.name.toLowerCase().includes(search));
   const picker = $('room-light-picker');
-  picker.innerHTML = state.lights.map(l =>
-    `<label><input type="checkbox" value="${l.id}"> ${l.name}</label>`
-  ).join('') || '<span class="muted">Aucune lumière disponible.</span>';
+  if (!state.lights.length) {
+    picker.innerHTML = '<span class="empty">Aucune lumière disponible.</span>';
+  } else if (!filteredLights.length) {
+    picker.innerHTML = '<span class="empty">Aucune lumière ne correspond à la recherche.</span>';
+  } else {
+    picker.innerHTML = filteredLights.map(l => {
+      const already = l.room_ids.map(roomName).join(', ');
+      return `<label>
+        <input type="checkbox" value="${l.id}" data-room-create-check ${ui.roomCreateChecked.has(l.id) ? 'checked' : ''}>
+        <span class="light-label-name">${l.name}</span>
+        ${already ? `<span class="muted" style="font-size:12px">déjà dans : ${already}</span>` : ''}
+      </label>`;
+    }).join('');
+  }
 
-  // rooms list
+  // rooms list — each room is a card; adding lights is a searchable
+  // multi-select checklist with a single "Ajouter" for all checked at once,
+  // instead of one dropdown-and-click per light.
   const roomsList = $('rooms-list');
   roomsList.innerHTML = '';
   if (!state.rooms.length) {
@@ -193,23 +296,37 @@ function render() {
   }
   state.rooms.forEach(r => {
     const div = document.createElement('div');
-    div.style.marginBottom = '14px';
+    div.className = 'room-card';
     const chips = r.light_ids.map(lid =>
       `<span class="chip">${lightName(lid)}<button data-remove-light="${r.id}:${lid}">×</button></span>`
-    ).join('');
+    ).join('') || '<span class="muted">Aucune lumière</span>';
+
     const availableLights = state.lights.filter(l => !r.light_ids.includes(l.id));
-    const options = availableLights.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    const roomSearch = (ui.roomAddSearch[r.id] || '').trim().toLowerCase();
+    const checkedSet = ui.roomAddChecked[r.id] || new Set();
+    const filteredAvailable = availableLights.filter(l => l.name.toLowerCase().includes(roomSearch));
+    const addChecklist = !availableLights.length
+      ? '<span class="empty">Toutes les lumières sont déjà dans cette pièce.</span>'
+      : (filteredAvailable.length
+        ? filteredAvailable.map(l => `<label>
+            <input type="checkbox" value="${l.id}" data-room-add-check="${r.id}" ${checkedSet.has(l.id) ? 'checked' : ''}>
+            <span class="light-label-name">${l.name}</span>
+          </label>`).join('')
+        : '<span class="empty">Aucune lumière ne correspond à la recherche.</span>');
+
     div.innerHTML = `
-      <div class="row" style="justify-content:space-between">
+      <div class="room-card-header">
         <strong>${r.name}</strong>
         <button class="small danger" data-delete-room="${r.id}">Supprimer la pièce</button>
       </div>
-      <div style="margin:6px 0">${chips || '<span class="muted">Aucune lumière</span>'}</div>
+      <div>${chips}</div>
       ${availableLights.length ? `
-      <div class="row">
-        <select data-add-select="${r.id}" style="max-width:220px">${options}</select>
-        <button class="small secondary" data-add-light="${r.id}">Ajouter</button>
-      </div>` : ''}
+      <details class="add-lights" ${ui.roomAddOpen[r.id] ? 'open' : ''} ontoggle="onRoomAddToggle('${r.id}', this.open)">
+        <summary>Ajouter des lumières</summary>
+        <input id="room-add-search-${r.id}" style="margin-top:8px" placeholder="Rechercher une lumière…" data-room-add-search="${r.id}" value="${ui.roomAddSearch[r.id] || ''}">
+        <div class="checklist">${addChecklist}</div>
+        <p style="margin:8px 0 0"><button class="small" data-room-add-submit="${r.id}">Ajouter la sélection</button></p>
+      </details>` : ''}
     `;
     roomsList.appendChild(div);
   });
@@ -239,8 +356,31 @@ function render() {
 
 async function refresh() {
   state = await api('api/state');
-  render();
+  // Drop stale checked/open-picker entries for lights or rooms that no
+  // longer exist (excluded, deleted) so they don't silently linger in `ui`.
+  const lightIds = new Set(state.lights.map(l => l.id));
+  const roomIds = new Set(state.rooms.map(r => r.id));
+  for (const id of ui.roomCreateChecked) if (!lightIds.has(id)) ui.roomCreateChecked.delete(id);
+  for (const rid of Object.keys(ui.roomAddChecked)) {
+    if (!roomIds.has(rid)) { delete ui.roomAddChecked[rid]; continue; }
+    for (const id of ui.roomAddChecked[rid]) if (!lightIds.has(id)) ui.roomAddChecked[rid].delete(id);
+  }
+  for (const rid of Object.keys(ui.roomAddOpen)) if (!roomIds.has(rid)) delete ui.roomAddOpen[rid];
+  for (const rid of Object.keys(ui.roomAddSearch)) if (!roomIds.has(rid)) delete ui.roomAddSearch[rid];
+  if (ui.openPicker && !lightIds.has(ui.openPicker)) ui.openPicker = null;
+  renderPreservingFocus();
 }
+
+document.body.addEventListener('input', (ev) => {
+  const t = ev.target;
+  if (t.id === 'room-light-search') {
+    ui.roomCreateSearch = t.value;
+    renderPreservingFocus();
+  } else if (t.dataset.roomAddSearch) {
+    ui.roomAddSearch[t.dataset.roomAddSearch] = t.value;
+    renderPreservingFocus();
+  }
+});
 
 document.body.addEventListener('click', async (ev) => {
   const t = ev.target;
@@ -271,20 +411,54 @@ document.body.addEventListener('click', async (ev) => {
       const [roomId, lightId] = t.dataset.removeLight.split(':');
       await api(`api/rooms/${roomId}/lights/${lightId}`, { method: 'DELETE' });
       toast('Lumière retirée de la pièce');
-    } else if (t.dataset.addLight) {
-      const roomId = t.dataset.addLight;
-      const select = document.querySelector(`[data-add-select="${roomId}"]`);
-      if (!select || !select.value) return;
-      await api(`api/rooms/${roomId}/lights`, { method: 'POST', body: JSON.stringify({ light_id: select.value }) });
-      toast('Lumière ajoutée');
+    } else if (t.dataset.lightRoomRemove) {
+      const [lightId, roomId] = t.dataset.lightRoomRemove.split(':');
+      await api(`api/rooms/${roomId}/lights/${lightId}`, { method: 'DELETE' });
+      toast('Lumière retirée de la pièce');
+    } else if (t.dataset.lightRoomAdd) {
+      const [lightId, roomId] = t.dataset.lightRoomAdd.split(':');
+      await api(`api/rooms/${roomId}/lights`, { method: 'POST', body: JSON.stringify({ light_id: lightId }) });
+      ui.openPicker = null;
+      toast('Lumière ajoutée à la pièce');
+    } else if (t.dataset.roomPickerToggle) {
+      const id = t.dataset.roomPickerToggle;
+      ui.openPicker = ui.openPicker === id ? null : id;
+      renderPreservingFocus();
+      return;
+    } else if (t.dataset.roomAddSubmit) {
+      const roomId = t.dataset.roomAddSubmit;
+      const checked = Array.from(ui.roomAddChecked[roomId] || []);
+      if (!checked.length) { toast('Sélectionnez au moins une lumière'); return; }
+      for (const lightId of checked) {
+        await api(`api/rooms/${roomId}/lights`, { method: 'POST', body: JSON.stringify({ light_id: lightId }) });
+      }
+      ui.roomAddChecked[roomId] = new Set();
+      ui.roomAddSearch[roomId] = '';
+      toast(checked.length > 1 ? `${checked.length} lumières ajoutées` : 'Lumière ajoutée');
+    } else if (t.matches('[data-room-create-check]')) {
+      if (t.checked) ui.roomCreateChecked.add(t.value); else ui.roomCreateChecked.delete(t.value);
+      return; // no server call, no refresh needed
+    } else if (t.matches('[data-room-add-check]')) {
+      const roomId = t.dataset.roomAddCheck;
+      if (!ui.roomAddChecked[roomId]) ui.roomAddChecked[roomId] = new Set();
+      if (t.checked) ui.roomAddChecked[roomId].add(t.value); else ui.roomAddChecked[roomId].delete(t.value);
+      return; // no server call, no refresh needed
     } else if (t.id === 'room-create') {
       const name = $('room-name').value.trim();
       if (!name) { toast('Nom de pièce requis'); return; }
-      const light_ids = Array.from(document.querySelectorAll('#room-light-picker input:checked')).map(el => el.value);
+      const light_ids = Array.from(ui.roomCreateChecked);
       await api('api/rooms', { method: 'POST', body: JSON.stringify({ name, light_ids }) });
       $('room-name').value = '';
+      ui.roomCreateChecked.clear();
+      ui.roomCreateSearch = '';
+      $('room-light-search').value = '';
       toast('Pièce créée');
     } else {
+      // Outside click: close any open inline room-picker popover.
+      if (ui.openPicker !== null && !t.closest('.room-picker-wrap')) {
+        ui.openPicker = null;
+        renderPreservingFocus();
+      }
       return;
     }
     await refresh();

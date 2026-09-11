@@ -311,7 +311,15 @@ class Light:
                 {"length": 2, "start": 18},
             ]
         elif self.modelid in ("915005987201", "LCX004", "LCX006"):
-            result["segments"]["max_segments"] = self.protocol_cfg.get("points_capable", 7)
+            # Fixed at 10 (not self.protocol_cfg["points_capable"], a
+            # different, unrelated number — see get_v2_api()'s `gradient`
+            # service): matches diyHue's HueObjects/Light.py exactly. This is
+            # the real bridge's own quirk for this product family — the
+            # Entertainment resource's "max_segments" here is the total
+            # virtual-pixel count across the 3 physical zones below
+            # (3+4+3=10), while gradient.points_capable is a separate cap on
+            # the *static* gradient-editing feature, not the streaming one.
+            result["segments"]["max_segments"] = 10
             result["segments"]["segments"] = [{"length": 3, "start": 0}, {"length": 4, "start": 3}, {"length": 3, "start": 7}]
         else:
             result["segments"]["max_segments"] = 1
