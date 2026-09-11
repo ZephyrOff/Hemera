@@ -78,6 +78,56 @@ class Light:
     def _entertainment_uuid(self) -> str:
         return str(uuid.uuid5(uuid.NAMESPACE_URL, self.id_v2 + "entertainment"))
 
+    def change_model(self, new_modelid: str) -> None:
+        """Re-present this light as a different Hue product (admin panel's
+        "change model" — e.g. Z2M's own capability autodetection guessed
+        wrong, or the user wants Entertainment/gradient support the
+        autodetected model doesn't have).
+
+        Mutates this instance in place rather than building a new Light and
+        replacing the dict entry: rooms/groups hold `weakref`s to the actual
+        object, so swapping in a new instance would silently drop this light
+        out of every room it's in.
+
+        state/config/dynamics are reset from the new model's template rather
+        than just swapping the modelid string — get_v1_api/get_v2_api/
+        get_v2_entertainment all read capability fields (e.g. colorgamut)
+        from ``lightTypes[self.modelid]`` keyed by whatever's actually in
+        self.state, so a leftover key the new template has no matching
+        capability for (e.g. "xy" after switching to a colour-temperature-only
+        model, which has no "colorgamut" to report) would KeyError there.
+        on/off, brightness, colour and colour-temperature carry over whenever
+        both the old and new model support that field.
+        """
+        old_state = self.state
+        template = lightTypes[new_modelid]
+        new_state = deepcopy(template["state"])
+        for key in ("on", "bri", "ct", "xy", "hue", "sat", "colormode", "reachable"):
+            if key in old_state and key in new_state:
+                new_state[key] = old_state[key]
+        self.modelid = new_modelid
+        self.state = new_state
+        self.config = deepcopy(template["config"])
+        self.dynamics = deepcopy(template["dynamics"])
+        stream_event({
+            "creationtime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "data": [self.get_v2_api()],
+            "id": str(uuid.uuid4()),
+            "type": "update",
+        })
+        stream_event({
+            "creationtime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "data": [self.get_device()],
+            "id": str(uuid.uuid4()),
+            "type": "update",
+        })
+        stream_event({
+            "creationtime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "data": [{"id": self._entertainment_uuid(), "type": "entertainment", **self.get_v2_entertainment()}],
+            "id": str(uuid.uuid4()),
+            "type": "update",
+        })
+
     def update_attr(self, newdata: dict) -> None:
         for key, value in newdata.items():
             current = getattr(self, key)

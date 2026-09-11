@@ -81,10 +81,19 @@ Organisé en cinq vues, via le menu à gauche :
   - *Connexion MQTT* : modifier et reconnecter la connexion au broker sans
     redémarrer. C'est l'unique endroit où la configurer (voir ci-dessus) ;
     une fois enregistrée, elle survit aux redémarrages.
-- **Lumières** : liste des appareils Zigbee2MQTT détectés — affectation
+- **Lumières** : liste des appareils Zigbee2MQTT détectés, avec leur état
+  actuel (allumé/éteint, luminosité) tel que connu du pont — affectation
   directe à une ou plusieurs pièces (bouton « + pièce » sur chaque ligne,
   × sur chaque étiquette pour en retirer une) — et, plus bas, les appareils
-  exclus du pont (réinclusion immédiate via "Réinclure").
+  exclus du pont (réinclusion immédiate via "Réinclure"). Le **modèle**
+  présenté à l'application Hue (couleur+température, couleur seule,
+  température seule, intensité seule, prise on/off, bandeau Gradient) est
+  modifiable via un menu déroulant, utile quand l'auto-détection depuis les
+  capacités Zigbee2MQTT s'est trompée. Pour un bandeau Gradient, le nombre
+  de points de couleur est aussi réglable — par défaut c'est celui que
+  Zigbee2MQTT annonce lui-même pour l'appareil, en forcer un autre plus
+  élevé que ce que le bandeau accepte réellement au niveau Zigbee n'aura
+  cependant aucun effet visible (Z2M tronque les couleurs en trop).
 - **Pièces** : création avec sélection directe des lumières à y inclure
   (champ de recherche si la liste est longue). Une pièce déjà créée peut
   aussi recevoir plusieurs lumières d'un coup (sélection multiple avec

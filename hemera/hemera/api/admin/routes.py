@@ -23,9 +23,11 @@ from hemera.api.v1.timezones import TIMEZONES
 from hemera.config.bootstrap import apply_timezone
 from hemera.config.handler import Config
 from hemera.lights.discover import next_free_id
+from hemera.lights.light_types import MODEL_CHOICES, lightTypes
 from hemera.logging_setup import get_logger
 from hemera.objects.entertainment_configuration import EntertainmentConfiguration
 from hemera.objects.group import Group
+from hemera.objects.light import _GRADIENT_MODELIDS
 from hemera.services.mqtt_client import MqttClient
 
 logging = get_logger(__name__)
@@ -56,6 +58,9 @@ class AdminApi:
         app.router.add_delete("/api/rooms/{id}/lights/{light_id}", self.h_remove_light_from_room)
         app.router.add_post("/api/lights/{id}/exclude", self.h_exclude_light)
         app.router.add_post("/api/excluded/{ieee}/include", self.h_include_device)
+        app.router.add_get("/api/models", self.h_models)
+        app.router.add_post("/api/lights/{id}/model", self.h_set_light_model)
+        app.router.add_post("/api/lights/{id}/gradient_points", self.h_set_gradient_points)
 
     async def h_index(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(os.path.join(_STATIC_DIR, "index.html"))
@@ -76,7 +81,11 @@ class AdminApi:
                 "modelid": light.modelid,
                 "reachable": light.state.get("reachable", True),
                 "on": light.state.get("on", False),
+                "bri": light.state.get("bri"),
                 "room_ids": room_ids,
+                "gradient_points": (
+                    light.protocol_cfg.get("points_capable", 7) if light.modelid in _GRADIENT_MODELIDS else None
+                ),
             })
 
         rooms = []
@@ -245,4 +254,49 @@ class AdminApi:
         excluded.pop(ieee, None)
         self.cfg.mark_dirty("config")
         self.mqtt_client.resync_devices()
+        return web.json_response({"ok": True})
+
+    # -- model / gradient points --------------------------------------------
+
+    async def h_models(self, request: web.Request) -> web.Response:
+        return web.json_response([{"modelid": m, "label": label} for m, label in MODEL_CHOICES])
+
+    async def h_set_light_model(self, request: web.Request) -> web.Response:
+        light_id = request.match_info["id"]
+        body = await request.json()
+        modelid = str(body.get("modelid", "")).strip()
+        light = self.yaml_config["lights"].get(light_id)
+        if light is None:
+            return web.json_response({"error": "not found"}, status=404)
+        if modelid not in lightTypes:
+            return web.json_response({"error": "unknown modelid"}, status=400)
+        if modelid != light.modelid:
+            light.change_model(modelid)
+            self.cfg.mark_dirty("lights")
+        return web.json_response({"ok": True})
+
+    async def h_set_gradient_points(self, request: web.Request) -> web.Response:
+        # Manual override for when Z2M's own reported gradient capability
+        # (auto-applied — see services/mqtt_client.py's _pick_gradient_length_max)
+        # is wrong, missing, or the user has otherwise verified their strip
+        # actually supports a different number of gradient stops than that.
+        light_id = request.match_info["id"]
+        body = await request.json()
+        light = self.yaml_config["lights"].get(light_id)
+        if light is None or light.modelid not in _GRADIENT_MODELIDS:
+            return web.json_response({"error": "not a gradient light"}, status=400)
+        try:
+            points = int(body.get("points_capable"))
+        except (TypeError, ValueError):
+            return web.json_response({"error": "points_capable must be an integer"}, status=400)
+        if not 1 <= points <= 32:
+            return web.json_response({"error": "points_capable out of range (1-32)"}, status=400)
+        light.protocol_cfg["points_capable"] = points
+        # Marks this as a deliberate override so mqtt_client's periodic
+        # re-sync (which otherwise re-derives this from Z2M's own reported
+        # capability on every `bridge/devices` refresh) leaves it alone —
+        # without this flag the very next device-list message would quietly
+        # revert it back.
+        light.protocol_cfg["points_capable_manual"] = True
+        self.cfg.mark_dirty("lights")
         return web.json_response({"ok": True})

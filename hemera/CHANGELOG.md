@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.10.0
+
+- **Vrai bug trouvé et corrigé : l'application Hue ne reflétait pas l'état
+  réel des lumières** (allumage, couleur, luminosité) quand il changeait en
+  dehors d'une commande envoyée depuis l'app elle-même — interrupteur
+  physique, automatisation, autre contrôleur. En cause : les mises à jour
+  reçues depuis Zigbee2MQTT étaient bien appliquées à l'état interne du
+  pont (un `GET` direct renvoyait déjà la bonne valeur), mais **jamais
+  notifiées au flux d'évènements CLIP v2** (`GET /eventstream/clip/v2`,
+  SSE) dont l'app dépend pour son affichage en temps réel — elle ne fait
+  pas de sondage actif. Corrigé dans `services/mqtt_client.py` :
+  `_update_light_state` pousse maintenant un évènement v2 à chaque
+  changement réellement affiché (on/off, luminosité, couleur, température
+  de couleur), en réutilisant le même mécanisme que les commandes envoyées
+  depuis l'app (`Light.genStreamEvent`) — sans bruit inutile : un message
+  Z2M qui ne change qu'un champ non affiché (ex. `linkquality`) ne pousse
+  rien.
+- **Modèle de lumière modifiable depuis le panel** (vue Lumières) : un
+  menu déroulant sur chaque lumière permet de changer le modèle Hue
+  présenté à l'application (couleur+température, couleur seule,
+  température seule, intensité seule, prise on/off, bandeau Gradient) —
+  utile quand l'auto-détection depuis les *exposes* Zigbee2MQTT a mal
+  deviné les capacités réelles de l'appareil. Le changement se fait sur
+  l'objet existant (pas de recréation) pour ne pas perdre son
+  appartenance aux pièces déjà configurées, et réinitialise état/config
+  depuis le nouveau modèle en ne conservant que les champs communs aux
+  deux (on/off, luminosité, couleur, température de couleur) pour éviter
+  toute incohérence avec les capacités annoncées du nouveau modèle.
+- **Point sur la limite à 3 points de couleur des bandeaux Gradient**,
+  question posée en parallèle : ce n'est pas un bridage introduit par le
+  pont — vérifié en conditions réelles, l'app Hue affiche exactement le
+  nombre que Zigbee2MQTT annonce lui-même pour l'appareil
+  (`length_max` de son expose `gradient`, lu dynamiquement depuis la
+  0.8.0). Si Z2M annonce 3, c'est cette valeur précise qui remonte — ce
+  n'est donc pas un choix arbitraire de notre côté. Un réglage manuel est
+  maintenant disponible dans le panel (à côté du sélecteur de modèle,
+  visible uniquement pour un bandeau Gradient) pour forcer une autre
+  valeur si le matériel réel supporte plus que ce que Z2M rapporte — cette
+  valeur manuelle est alors mémorisée et n'est plus jamais écrasée par la
+  resynchronisation automatique. Cela dit, si Zigbee2MQTT/le firmware du
+  bandeau n'acceptent réellement que 3 couleurs au niveau du cluster
+  Zigbee, forcer un nombre plus élevé ne fera qu'afficher plus de points
+  dans l'app sans qu'ils soient réellement appliqués sur le bandeau — Z2M
+  tronquera ou ignorera les couleurs en trop à la publication.
+
 ## 0.9.0
 
 - **Panel d'administration réorganisé en vues séparées**, avec un menu de

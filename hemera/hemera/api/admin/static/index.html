@@ -151,6 +151,7 @@
             <thead><tr><th></th><th>Nom</th><th>Modèle</th><th>Pièces</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
+          <p class="hint">Le modèle détermine ce que l'application Hue pense contrôler (couleur, température, dégradé...). Si Zigbee2MQTT a mal deviné les capacités réelles de l'appareil, changez-le ici.</p>
           <p class="muted" id="lights-empty" style="display:none">Aucune lumière découverte pour l'instant — vérifiez la connexion MQTT (voir Configuration).</p>
         </section>
 
@@ -202,6 +203,7 @@
 const $ = (id) => document.getElementById(id);
 let state = null;
 let timezones = [];
+let models = [];
 
 // Transient UI state that must survive the periodic refresh() re-render
 // (previously every checkbox selection in the room-creation checklist was
@@ -321,10 +323,27 @@ function render() {
     const popoverContent = availableRooms.length
       ? availableRooms.map(r => `<button type="button" class="pill" data-light-room-add="${l.id}:${r.id}">${r.name}</button>`).join('')
       : '<span class="muted" style="padding:4px 6px;display:block">Aucune pièce disponible — créez-en une dans Pièces.</span>';
+    const statusText = l.on ? 'Allumé' : 'Éteint';
+    const briText = l.bri != null ? ` · ${Math.round(l.bri / 2.54)}%` : '';
+    const modelOptions = models.map(m =>
+      `<option value="${m.modelid}" ${m.modelid === l.modelid ? 'selected' : ''}>${m.label}</option>`
+    ).join('');
+    const gradientControl = l.gradient_points != null ? `
+      <div style="margin-top:6px">
+        <label style="margin:0">Points de dégradé</label>
+        <select data-gradient-points="${l.id}" style="width:auto">
+          ${Array.from({length: 15}, (_, i) => i + 1).map(n =>
+            `<option value="${n}" ${n === l.gradient_points ? 'selected' : ''}>${n}</option>`
+          ).join('')}
+        </select>
+      </div>` : '';
     tr.innerHTML = `
       <td><span class="dot ${l.reachable ? 'ok' : 'off'}"></span></td>
-      <td>${l.name}</td>
-      <td class="muted">${l.modelid}</td>
+      <td>${l.name}<div class="muted" style="font-size:11px">${statusText}${briText}</div></td>
+      <td>
+        <select data-light-model="${l.id}" style="min-width:200px">${modelOptions}</select>
+        ${gradientControl}
+      </td>
       <td class="room-cell">
         ${chips}
         <span class="room-picker-wrap">
@@ -432,6 +451,10 @@ async function loadTimezones() {
     timezones.map(tz => `<option value="${tz}">${tz}</option>`).join('');
 }
 
+async function loadModels() {
+  models = await api('api/models');
+}
+
 async function refresh() {
   state = await api('api/state');
   // Drop stale checked/open-picker entries for lights or rooms that no
@@ -457,6 +480,30 @@ document.body.addEventListener('input', (ev) => {
   } else if (t.dataset.roomAddSearch) {
     ui.roomAddSearch[t.dataset.roomAddSearch] = t.value;
     renderPreservingFocus();
+  }
+});
+
+document.body.addEventListener('change', async (ev) => {
+  const t = ev.target;
+  try {
+    if (t.dataset.lightModel) {
+      const lightId = t.dataset.lightModel;
+      const label = t.options[t.selectedIndex].textContent;
+      if (!confirm(`Changer le modèle de cette lumière en « ${label} » ? L'état actuel (couleur, effets...) sera réinitialisé si le nouveau modèle ne le supporte pas.`)) {
+        renderPreservingFocus(); // revert the <select> to the still-current model
+        return;
+      }
+      await api(`api/lights/${lightId}/model`, { method: 'POST', body: JSON.stringify({ modelid: t.value }) });
+      toast('Modèle mis à jour');
+      await refresh();
+    } else if (t.dataset.gradientPoints) {
+      const lightId = t.dataset.gradientPoints;
+      await api(`api/lights/${lightId}/gradient_points`, { method: 'POST', body: JSON.stringify({ points_capable: parseInt(t.value, 10) }) });
+      toast('Nombre de points de dégradé mis à jour');
+      await refresh();
+    }
+  } catch (e) {
+    toast('Erreur: ' + e.message);
   }
 });
 
@@ -554,8 +601,8 @@ document.body.addEventListener('click', async (ev) => {
 });
 
 (async () => {
-  await loadTimezones(); // populate the <select>'s options before the first
-                          // render() tries to set its value, or it's a no-op
+  await Promise.all([loadTimezones(), loadModels()]); // populate <select>
+                          // options before the first render() sets values
   await refresh();
   setInterval(refresh, 5000);
 })();

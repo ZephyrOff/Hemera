@@ -149,6 +149,20 @@ lightTypes: dict[str, dict] = {
     },
 }
 
+# Human-readable labels for the admin panel's "change model" picker — the
+# templates' own product_name fields are copied verbatim from real (and
+# inconsistently-named, e.g. LWB010's says "Color temperature light" despite
+# being dimmable-only) Philips SKUs, not written for picking one apart from
+# another by capability.
+MODEL_CHOICES: list[tuple[str, str]] = [
+    ("LCT015", "Couleur + température (par défaut)"),
+    ("LLC010", "Couleur uniquement"),
+    ("LTW001", "Température de couleur uniquement"),
+    ("LWB010", "Intensité réglable uniquement (pas de couleur)"),
+    ("LOM001", "Prise On/Off uniquement"),
+    ("LCX004", "Bandeau Gradient (couleur multi-points)"),
+]
+
 # v1 "archetype" -> v2 "archetype" (dashes/case normalisation Hue uses between APIs).
 archetype: dict[str, str] = {
     "sultanbulb": "sultan_bulb",

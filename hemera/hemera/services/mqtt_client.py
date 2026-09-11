@@ -26,6 +26,7 @@ import aiomqtt
 from hemera.config.handler import Config
 from hemera.lights.discover import add_new_light
 from hemera.logging_setup import get_logger
+from hemera.objects import v1_state_to_v2
 
 logging = get_logger(__name__)
 
@@ -245,8 +246,11 @@ class MqttClient:
                 # before this device-reported length_max was read (or before
                 # Z2M itself started reporting it) were stuck on the old
                 # hardcoded default forever, since this branch previously
-                # returned before ever looking at it again.
-                if existing.modelid == "LCX004":
+                # returned before ever looking at it again. Skipped once the
+                # admin panel has set this manually (see admin/routes.py's
+                # h_set_gradient_points) — otherwise the next device-list
+                # refresh would silently revert that override.
+                if existing.modelid == "LCX004" and not existing.protocol_cfg.get("points_capable_manual"):
                     real_points = _pick_gradient_length_max(exposes)
                     if existing.protocol_cfg.get("points_capable") != real_points:
                         existing.protocol_cfg["points_capable"] = real_points
@@ -294,3 +298,17 @@ class MqttClient:
             state["xy"] = [color["x"], color["y"]]
             state["colormode"] = "xy"
         light.state.update(state)
+
+        # Without this, a state change coming from Z2M (a physical switch, an
+        # automation, another controller) never reaches the Hue app: it only
+        # ever learns about light state through the v2 CLIP eventstream (SSE)
+        # — GET requests do return the correct live state, but the app relies
+        # on push notifications for its normal UI, not polling. This left it
+        # showing whatever it last saw at pairing/last-open time regardless of
+        # what actually happened afterwards. `v1_state_to_v2` only returns the
+        # fields actually present in this Z2M message, so a message that
+        # changed nothing display-relevant (e.g. just `linkquality`) pushes
+        # nothing rather than spamming empty events.
+        v2_state = v1_state_to_v2(state)
+        if v2_state:
+            light.genStreamEvent(v2_state)
