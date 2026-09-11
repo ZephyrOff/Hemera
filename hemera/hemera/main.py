@@ -15,6 +15,7 @@ import sys
 from aiohttp import web
 
 from hemera.api.admin.routes import AdminApi
+from hemera.api.routing import add_route
 from hemera.api.v1.routes import HueV1Api
 from hemera.api.v2.eventstream import stream_v2_events, trim_eventstream_forever
 from hemera.api.v2.routes import HueV2Api
@@ -191,7 +192,7 @@ async def async_main() -> None:
     # client tries.
     hue_v1.register_routes(v2_app)
     hue_v2.register_routes(v2_app)
-    v2_app.router.add_get("/eventstream/clip/v2", stream_v2_events)
+    add_route(v2_app, "GET", "/eventstream/clip/v2", stream_v2_events)
     v2_runner = web.AppRunner(v2_app)
     await v2_runner.setup()
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

@@ -18,6 +18,7 @@ import os
 
 from aiohttp import web
 
+from hemera.api.routing import add_route
 from hemera.api.v1.routes import HueV1Api
 from hemera.api.v1.timezones import TIMEZONES
 from hemera.config.bootstrap import apply_timezone
@@ -54,21 +55,23 @@ class AdminApi:
         return self.cfg.yaml_config
 
     def register_routes(self, app: web.Application) -> None:
-        app.router.add_get("/", self.h_index)
-        app.router.add_get("/api/state", self.h_state)
-        app.router.add_get("/api/timezones", self.h_timezones)
-        app.router.add_post("/api/bridge", self.h_set_bridge)
-        app.router.add_post("/api/mqtt", self.h_set_mqtt)
-        app.router.add_post("/api/linkbutton", self.h_linkbutton)
-        app.router.add_post("/api/rooms", self.h_create_room)
-        app.router.add_delete("/api/rooms/{id}", self.h_delete_room)
-        app.router.add_post("/api/rooms/{id}/lights", self.h_add_light_to_room)
-        app.router.add_delete("/api/rooms/{id}/lights/{light_id}", self.h_remove_light_from_room)
-        app.router.add_post("/api/lights/{id}/exclude", self.h_exclude_light)
-        app.router.add_post("/api/excluded/{connector}/{key}/include", self.h_include_device)
-        app.router.add_get("/api/models", self.h_models)
-        app.router.add_post("/api/lights/{id}/model", self.h_set_light_model)
-        app.router.add_post("/api/lights/{id}/gradient_points", self.h_set_gradient_points)
+        # add_route (not app.router.add_get/... directly) also registers a
+        # trailing-slash alias for each path — see api/routing.py.
+        add_route(app, "GET", "/", self.h_index)
+        add_route(app, "GET", "/api/state", self.h_state)
+        add_route(app, "GET", "/api/timezones", self.h_timezones)
+        add_route(app, "POST", "/api/bridge", self.h_set_bridge)
+        add_route(app, "POST", "/api/mqtt", self.h_set_mqtt)
+        add_route(app, "POST", "/api/linkbutton", self.h_linkbutton)
+        add_route(app, "POST", "/api/rooms", self.h_create_room)
+        add_route(app, "DELETE", "/api/rooms/{id}", self.h_delete_room)
+        add_route(app, "POST", "/api/rooms/{id}/lights", self.h_add_light_to_room)
+        add_route(app, "DELETE", "/api/rooms/{id}/lights/{light_id}", self.h_remove_light_from_room)
+        add_route(app, "POST", "/api/lights/{id}/exclude", self.h_exclude_light)
+        add_route(app, "POST", "/api/excluded/{connector}/{key}/include", self.h_include_device)
+        add_route(app, "GET", "/api/models", self.h_models)
+        add_route(app, "POST", "/api/lights/{id}/model", self.h_set_light_model)
+        add_route(app, "POST", "/api/lights/{id}/gradient_points", self.h_set_gradient_points)
 
     async def h_index(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(os.path.join(_STATIC_DIR, "index.html"))

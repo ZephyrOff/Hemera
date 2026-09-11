@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 
 from aiohttp import web
 
+from hemera.api.routing import add_route
 from hemera.api.v1.timezones import TIMEZONES
 from hemera.config.bootstrap import apply_timezone
 from hemera.config.handler import Config
@@ -135,7 +136,7 @@ class HueV1Api:
             ("DELETE", "/api/{username}/{resource}/{rid}", self.h_v1_catchall_delete),
         ]
         for method, path, handler in routes:
-            app.router.add_route(method, path, handler)
+            add_route(app, method, path, handler)
 
     # -- helpers -----------------------------------------------------------
 

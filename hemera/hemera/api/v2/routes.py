@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from aiohttp import web
 
+from hemera.api.routing import add_route
 from hemera.config.handler import Config
 from hemera.logging_setup import get_logger
 from hemera.objects import stream_event
@@ -210,13 +211,16 @@ class HueV2Api:
     # -- routing ------------------------------------------------------------
 
     def register_routes(self, app: web.Application) -> None:
-        app.router.add_get("/clip/v2/resource", self.h_list_all)
-        app.router.add_get("/clip/v2/resource/{resource}", self.h_list_resource)
-        app.router.add_get("/clip/v2/resource/{resource}/{id}", self.h_get_one)
-        app.router.add_post("/clip/v2/resource/{resource}", self.h_create)
-        app.router.add_put("/clip/v2/resource/{resource}/{id}", self.h_update)
-        app.router.add_delete("/clip/v2/resource/{resource}/{id}", self.h_delete)
-        app.router.add_get("/auth/v1", self.h_auth_v1)
+        # add_route (not app.router.add_get/... directly) also registers a
+        # trailing-slash alias for each path — see api/routing.py for why
+        # that matters even here, not just for v1's /api.
+        add_route(app, "GET", "/clip/v2/resource", self.h_list_all)
+        add_route(app, "GET", "/clip/v2/resource/{resource}", self.h_list_resource)
+        add_route(app, "GET", "/clip/v2/resource/{resource}/{id}", self.h_get_one)
+        add_route(app, "POST", "/clip/v2/resource/{resource}", self.h_create)
+        add_route(app, "PUT", "/clip/v2/resource/{resource}/{id}", self.h_update)
+        add_route(app, "DELETE", "/clip/v2/resource/{resource}/{id}", self.h_delete)
+        add_route(app, "GET", "/auth/v1", self.h_auth_v1)
 
     # -- handlers -------------------------------------------------------------
 

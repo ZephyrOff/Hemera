@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.15.1
+
+- **Correctif du pairing avec Hue Sync (Desktop, et sans doute la Sync Box)**
+  : bloqué indéfiniment sur "appuyez sur le bouton Push-Link", malgré un
+  appairage qui fonctionne très bien avec l'application Hue elle-même.
+  Trouvé grâce aux logs de l'add-on (pas une supposition) : Hue Sync
+  envoie systématiquement `POST /api/` — **avec un slash final** — pour
+  s'enregistrer, alors que l'application Hue, curl, et tous nos tests
+  utilisent `POST /api` (sans slash). Le routeur d'aiohttp traite ces deux
+  chemins comme distincts ; seul le second était enregistré, donc chaque
+  tentative de Sync se terminait en 404 — indiscernable, de son côté, d'un
+  pont qui ne répond jamais.
+  - Corrigé en enregistrant systématiquement un alias avec slash final
+    pour chaque route (v1, v2/CLIP, panel d'administration) — nouveau
+    module `api/routing.py`.
+  - Détail technique noté au passage : la solution la plus évidente (un
+    middleware aiohttp qui redirige `/api/` vers `/api`, ou le
+    `normalize_path_middleware` intégré à aiohttp qui fait exactement
+    ça) a été écartée puis abandonnée après test : une redirection HTTP
+    exige que le client renvoie correctement la même méthode et le même
+    corps vers la nouvelle adresse, ce qu'on ne peut pas garantir pour un
+    client qu'on ne maîtrise pas. Un middleware qui tente de router en
+    interne sans redirection ne fonctionne pas non plus, confirmé en le
+    testant en isolation : aiohttp fige le gestionnaire suivant sur la
+    route résolue *avant* l'exécution des middlewares, donc muter
+    `match_info` en cours de route n'a aucun effet. Enregistrer les deux
+    chemins dès le départ évite ces deux problèmes.
+  - Vérifié de bout en bout avec la requête exacte observée dans les logs
+    (`POST /api/` avec le corps JSON envoyé par Sync) : réussit
+    maintenant normalement, `clientkey` inclus.
+
 ## 0.15.0
 
 - **« Points de dégradé » retiré de la vue Lumières** : depuis la 0.14.0,
