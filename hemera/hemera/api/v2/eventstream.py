@@ -63,17 +63,31 @@ async def stream_v2_events(request: web.Request) -> web.StreamResponse:
     await response.write(b": hi\n\n")
 
     last_event_id = request.headers.get("Last-Event-ID")
+    latest_seq_at_connect = _latest_seq()
     if last_event_id is not None:
         try:
             cursor_seq = int(last_event_id)
         except ValueError:
-            cursor_seq = _latest_seq()
+            cursor_seq = latest_seq_at_connect
     else:
         # First-ever connection from this client — nothing to catch up on,
         # start live-only (matches the real bridge: no reason to dump
         # unrelated history to someone who's never connected before).
-        cursor_seq = _latest_seq()
+        cursor_seq = latest_seq_at_connect
 
+    # Left in at INFO (not DEBUG) deliberately: this is the one piece of
+    # evidence that actually distinguishes "the app isn't connected to the
+    # eventstream at all / reconnects without Last-Event-ID / doesn't
+    # reconnect in any standard way" from "it's connected and replay is
+    # working but something else is wrong" — which isn't otherwise
+    # observable from outside a real Hue app, and every prior fix in this
+    # area was verified against a synthetic test client, not the real thing.
+    logging.info(
+        "SSE eventstream: client %s connected (Last-Event-ID=%s, resuming from seq %d, latest known seq %d%s)",
+        request.remote, last_event_id, cursor_seq, latest_seq_at_connect,
+        ", catching up" if latest_seq_at_connect > cursor_seq else "",
+    )
+    sent_count = 0
     last_activity = time.monotonic()
     try:
         while True:
@@ -90,11 +104,15 @@ async def stream_v2_events(request: web.Request) -> web.StreamResponse:
                     chunk = f"id: {seq}\ndata: {json.dumps([message], separators=(',', ':'))}\n\n"
                     await response.write(chunk.encode("utf-8"))
                     cursor_seq = seq
+                    sent_count += 1
                 last_activity = time.monotonic()
             elif time.monotonic() - last_activity >= _HEARTBEAT_INTERVAL_S:
                 await response.write(b": hue-bridge-heartbeat\n\n")
                 last_activity = time.monotonic()
             await asyncio.sleep(_POLL_INTERVAL_S)
-    except (ConnectionResetError, asyncio.CancelledError):
-        pass
+    except (ConnectionResetError, asyncio.CancelledError) as exc:
+        logging.info(
+            "SSE eventstream: client %s disconnected (%s) after %d event(s), last seq sent %d",
+            request.remote, type(exc).__name__, sent_count, cursor_seq,
+        )
     return response

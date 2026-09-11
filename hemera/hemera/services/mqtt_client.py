@@ -311,4 +311,5 @@ class MqttClient:
         # nothing rather than spamming empty events.
         v2_state = v1_state_to_v2(state)
         if v2_state:
+            logging.info("MQTT state change for %s -> pushing eventstream update: %s", friendly_name, v2_state)
             light.genStreamEvent(v2_state)

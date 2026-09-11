@@ -55,7 +55,15 @@
   .nav-item.active svg { opacity: 1; }
   .content { flex: 1; min-width: 0; padding: 30px 32px 56px; }
   .content-inner { max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
-  .view h1 { margin: 0 0 20px; font-size: 21px; font-weight: 700; letter-spacing: -.015em; }
+  /* The gap above only ever separates the (mutually-exclusive, only-one-visible)
+     top-level views from each other — it does nothing for the cards *inside*
+     one view, which had no spacing of their own and rendered stacked flush
+     against each other. */
+  .view { display: flex; flex-direction: column; gap: 20px; }
+  .view[hidden] { display: none; } /* .view's own `display: flex` has equal specificity to the
+    UA stylesheet's [hidden] rule and would otherwise win by cascade order, silently breaking
+    switchView()'s hide/show entirely — every view rendering stacked at once. */
+  .view h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.015em; }
   @media (max-width: 720px) {
     .app { flex-direction: column; }
     .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
@@ -118,7 +126,10 @@
   .muted { color: var(--muted); }
   .hint { font-size: 12px; color: var(--muted); margin: 4px 0 10px; line-height: 1.5; }
   .checklist { display: flex; flex-direction: column; gap: 1px; margin: 8px 0; max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; background: var(--bg-soft); }
-  .checklist label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); padding: 6px 4px; border-radius: 6px; }
+  .checklist label {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text);
+    padding: 6px 4px; border-radius: 6px; text-transform: none; font-weight: 400; margin-bottom: 0;
+  }
   .checklist label:hover { background: var(--card); }
   .checklist input { width: auto; }
   .checklist .empty { color: var(--muted); font-size: 13px; padding: 6px 4px; }

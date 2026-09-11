@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.12.0
+
+- **Marges entre les blocs du panel corrigées** : "Lumières découvertes" et
+  "Appareils exclus" (et toutes les autres paires de cartes dans une même
+  vue) étaient collées l'une à l'autre. En cause : l'espacement n'était
+  posé que sur le conteneur de premier niveau, entre les *vues* elles-mêmes
+  (Appairage/Configuration/...), qui ne sont jamais visibles deux à la
+  fois — donc sans effet réel — et jamais entre les cartes à l'intérieur
+  d'une même vue.
+  - Corrigé en ajoutant l'espacement au niveau de chaque vue. Au passage,
+    ce changement avait initialement cassé le changement de vue lui-même
+    (toutes les vues s'affichaient empilées en même temps, plus aucune
+    séparation entre Appairage/Configuration/etc.) à cause d'un conflit de
+    priorité CSS avec l'attribut `hidden` — repéré à la capture d'écran de
+    vérification avant publication, corrigé dans la foulée.
+  - Un deuxième effet de bord similaire (noms de lumières/pièces affichés
+    en MAJUSCULES dans les listes à cocher) a été trouvé et corrigé de la
+    même manière.
+- **Plus de modèles de lumière disponibles** (vue Lumières → sélecteur de
+  modèle et « Liste des modèles ») : passé de 6 à 10, en portant les
+  variantes de diyHue qui représentent une différence réelle (icône/forme
+  affichée dans l'app, pas seulement un SKU Philips différent pour une
+  capacité identique) — spot couleur GU10 (`LCG001`), bandeau couleur sans
+  dégradé façon Lightstrip Plus (`LST002`), et deux variantes Gradient
+  supplémentaires : le bandeau TV/Play 3 zones (`LCX002`, déjà géré par le
+  moteur Entertainment mais jusqu'ici pas sélectionnable) et le lampadaire
+  Signe Gradient (`915005987201`). Les autres variantes de diyHue (`LCT001`,
+  `LCA005`, `LOM004`, `LOM010`, `LCX006`) ont été délibérément laissées de
+  côté : elles sont identiques, y compris dans le code source de diyHue
+  lui-même, à un modèle déjà proposé (même capacités, même icône).
+- **Suivi de l'état en direct : toujours en cours d'investigation.** Les
+  deux correctifs précédents (poussée d'évènement à chaque changement MQTT,
+  puis prise en charge de la reconnexion SSE standard) sont vérifiés
+  fonctionnels par des tests directs sur le protocole — mais un
+  changement fait depuis Home Assistant reste invisible dans l'app tant
+  qu'elle n'est pas relancée. N'ayant pas d'appareil réel sous la main
+  pour observer ce que fait précisément l'app à ce moment-là, des logs
+  détaillés ont été ajoutés (niveau INFO, donc visibles sans rien
+  configurer) : chaque connexion/déconnexion au flux d'évènements
+  (`hemera.api.v2.eventstream`, avec l'IP du client et si une reprise
+  `Last-Event-ID` a eu lieu) et chaque changement d'état poussé suite à un
+  message Zigbee2MQTT (`hemera.services.mqtt_client`). La prochaine fois
+  que le problème se reproduit, ces deux lignes de log (consultables dans
+  l'onglet Journal de l'add-on) diront si l'app avait une connexion active
+  au flux à ce moment-là et si le changement a bien été poussé — de quoi
+  distinguer un problème côté pont (rien n'est poussé, ou personne n'est
+  connecté) d'un problème côté app (tout est poussé correctement mais elle
+  ne l'affiche pas).
+
 ## 0.11.0
 
 - **Deuxième bug réel trouvé sur la remontée d'état en direct** (suite de la
