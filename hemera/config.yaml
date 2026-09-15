@@ -1,6 +1,6 @@
 ---
 name: Hemera
-version: "0.15.1"
+version: "0.15.2"
 slug: hemera
 description: >-
   Pont Hue virtuel pour Zigbee2MQTT — fonctionne avec l'application Hue et
@@ -48,7 +48,7 @@ options:
 schema:
   mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)?"
   timezone: "str?"
-  entertainment_fps: "int(1,30)"
+  entertainment_fps: "int(1,50)"
   log_level: "list(debug|info|warning|error)"
 # No `map` entries needed: persisted state (paired users, lights/groups/
 # scenes, TLS cert) lives in /data, which every add-on gets automatically —

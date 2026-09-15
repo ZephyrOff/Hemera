@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.2
+
+- Relèvement du plafond de l'option `entertainment_fps` de 30 à 50 Hz. La
+  valeur par défaut reste 15 (débit recommandé, cf. `engine.py`) : le
+  maillage Zigbee sature généralement avant de pouvoir tirer parti d'un
+  débit plus élevé, mais la limite haute est désormais configurable pour
+  qui veut tester au-delà.
+
 ## 0.15.1
 
 - **Correctif du pairing avec Hue Sync (Desktop, et sans doute la Sync Box)**

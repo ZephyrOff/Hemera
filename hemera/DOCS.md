@@ -32,7 +32,7 @@ le certificat au redémarrage.
 |---|---|
 | `mac` | MAC réelle de l'interface réseau du serveur (voir ci-dessus). Laisser vide pour tenter une auto-détection — non fiable sous réseau hôte. |
 | `timezone` | Fuseau horaire IANA (ex. `Europe/Paris`) reporté à l'app Hue. Laisser vide pour reprendre automatiquement celui déjà configuré dans Home Assistant. N'est utilisé qu'au tout premier démarrage — ensuite, le panel d'administration (Configuration → Général) est la référence. |
-| `entertainment_fps` | Débit de mise à jour des couleurs pendant une session Hue Entertainment (Sync Box), 1 à 30 Hz. À baisser si le réseau Zigbee sature. |
+| `entertainment_fps` | Débit de mise à jour des couleurs pendant une session Hue Entertainment (Sync Box), 1 à 50 Hz (15 recommandé — au-delà, le maillage Zigbee sature généralement avant d'y gagner en fluidité perçue). À baisser si le réseau Zigbee sature. |
 | `log_level` | Niveau de log. |
 
 La connexion MQTT n'est **pas** une option de l'add-on : elle se configure
